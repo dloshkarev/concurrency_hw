@@ -35,15 +35,10 @@ func (p *QueryParser) ParseQuery(queryString string) (Query, error) {
 		return Query{}, err
 	}
 
-	if ((commandId == GetCommandId || commandId == DelCommandId) && len(tokens) != 2) ||
-		(commandId == SetCommandId && len(tokens) != 3) {
-		p.logger.Debug("invalid count of arguments", zap.String("query", queryString))
-		return Query{}, errors.New("invalid count of arguments")
-	}
-
 	query, err := mapQuery(tokens, commandId)
 	if err != nil {
 		p.logger.Debug("error parsing query", zap.String("query", queryString), zap.Error(err))
+		return Query{}, err
 	}
 	return query, nil
 }

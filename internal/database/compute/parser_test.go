@@ -72,19 +72,19 @@ func TestQueryParser_ParseQuery(t *testing.T) {
 			name:    "SET with missing arguments",
 			query:   "SET key",
 			wantErr: true,
-			errMsg:  "invalid count of arguments",
+			errMsg:  "SET: invalid count of arguments",
 		},
 		{
 			name:    "GET with too many arguments",
 			query:   "GET key extra",
 			wantErr: true,
-			errMsg:  "invalid count of arguments",
+			errMsg:  "GET: invalid count of arguments",
 		},
 		{
 			name:    "DEL with too many arguments",
 			query:   "DEL key extra",
 			wantErr: true,
-			errMsg:  "invalid count of arguments",
+			errMsg:  "DEL: invalid count of arguments",
 		},
 	}
 
