@@ -2,14 +2,11 @@ package mem
 
 import (
 	"testing"
-
-	"go.uber.org/zap"
 )
 
 func TestInMemoryEngine(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
 	initialSize := 10
-	engine := NewEngine(logger, initialSize)
+	engine := NewEngine(initialSize)
 
 	t.Run("Set and Get", func(t *testing.T) {
 		key := "testKey"
@@ -61,8 +58,7 @@ func TestInMemoryEngine(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-	engine := NewEngine(logger, 0)
+	engine := NewEngine(0)
 
 	// TODO: Тест на конкурентный доступ пока не работает
 	t.Run("Concurrent access", func(t *testing.T) {

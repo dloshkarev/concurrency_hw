@@ -1,6 +1,7 @@
 package compute
 
 import (
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"testing"
@@ -41,19 +42,19 @@ func TestQueryParser_ParseQuery(t *testing.T) {
 		{
 			name:      "Valid SET command",
 			query:     "SET key value",
-			wantQuery: Query{commandId: SetCommandId, key: "key", value: "value"},
+			wantQuery: Query{commandId: SetCommandId, args: []string{"key", "value"}},
 			wantErr:   false,
 		},
 		{
 			name:      "Valid GET command",
 			query:     "GET key",
-			wantQuery: Query{commandId: GetCommandId, key: "key", value: ""},
+			wantQuery: Query{commandId: GetCommandId, args: []string{"key"}},
 			wantErr:   false,
 		},
 		{
 			name:      "Valid DEL command",
 			query:     "DEL key",
-			wantQuery: Query{commandId: DelCommandId, key: "key", value: ""},
+			wantQuery: Query{commandId: DelCommandId, args: []string{"key"}},
 			wantErr:   false,
 		},
 		{
@@ -101,9 +102,10 @@ func TestQueryParser_ParseQuery(t *testing.T) {
 				}
 				return
 			}
-			if got.commandId != tt.wantQuery.commandId || got.key != tt.wantQuery.key || got.value != tt.wantQuery.value {
+			if got.commandId != tt.wantQuery.commandId {
 				t.Errorf("ParseQuery() = %+v, want %+v", got, tt.wantQuery)
 			}
+			assert.ElementsMatch(t, got.args, tt.wantQuery.args)
 		})
 	}
 }

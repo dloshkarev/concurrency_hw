@@ -1,19 +1,12 @@
 package mem
 
-import (
-	"go.uber.org/zap"
-)
-
 // TODO: о потокобезопасности речи пока не идет
 type InMemoryEngine struct {
-	logger  *zap.Logger
 	storage map[string]string
 }
 
-func NewEngine(logger *zap.Logger, initialSize int) *InMemoryEngine {
-	logger.Info("In-memory engine has been initialized")
+func NewEngine(initialSize int) *InMemoryEngine {
 	return &InMemoryEngine{
-		logger:  logger,
 		storage: make(map[string]string, initialSize),
 	}
 }

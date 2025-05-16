@@ -58,8 +58,7 @@ func mapQuery(tokens []string, commandId CommandId) (Query, error) {
 		}
 		return Query{
 			commandId: commandId,
-			key:       tokens[1],
-			value:     tokens[2],
+			args:      tokens[1:],
 		}, nil
 	case GetCommandId:
 		if len(tokens) != 2 {
@@ -67,7 +66,7 @@ func mapQuery(tokens []string, commandId CommandId) (Query, error) {
 		}
 		return Query{
 			commandId: commandId,
-			key:       tokens[1],
+			args:      tokens[1:],
 		}, nil
 	case DelCommandId:
 		if len(tokens) != 2 {
@@ -75,7 +74,7 @@ func mapQuery(tokens []string, commandId CommandId) (Query, error) {
 		}
 		return Query{
 			commandId: commandId,
-			key:       tokens[1],
+			args:      tokens[1:],
 		}, nil
 	default:
 		return Query{}, errors.New("unknown commandId")
