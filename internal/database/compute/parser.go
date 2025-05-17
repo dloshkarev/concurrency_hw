@@ -29,13 +29,13 @@ func (p *QueryParser) ParseQuery(queryString string) (Query, error) {
 	}
 
 	commandToken := tokens[0]
-	commandId, err := parseCommandId(commandToken)
+	commandSettings, err := parseCommandSettings(commandToken)
 	if err != nil {
-		p.logger.Debug("error parsing command id", zap.String("query", queryString), zap.Error(err))
+		p.logger.Debug("error parsing settings", zap.String("query", queryString), zap.Error(err))
 		return Query{}, err
 	}
 
-	query, err := mapQuery(tokens, commandId)
+	query, err := mapQuery(tokens[1:], commandSettings)
 	if err != nil {
 		p.logger.Debug("error parsing query", zap.String("query", queryString), zap.Error(err))
 		return Query{}, err
@@ -43,40 +43,16 @@ func (p *QueryParser) ParseQuery(queryString string) (Query, error) {
 	return query, nil
 }
 
-func parseCommandId(token string) (CommandId, error) {
-	if commandId, exists := commandMapping[token]; exists {
-		return commandId, nil
+func parseCommandSettings(token string) (CommandSettings, error) {
+	if setting, exists := commandSettings[token]; exists {
+		return setting, nil
 	}
-	return UnknownCommandId, fmt.Errorf("invalid command token: %s", token)
+	return CommandSettings{}, fmt.Errorf("invalid command token: %s", token)
 }
 
-func mapQuery(tokens []string, commandId CommandId) (Query, error) {
-	switch commandId {
-	case SetCommandId:
-		if len(tokens) != 3 {
-			return Query{}, errors.New("SET: invalid count of arguments")
-		}
-		return Query{
-			commandId: commandId,
-			args:      tokens[1:],
-		}, nil
-	case GetCommandId:
-		if len(tokens) != 2 {
-			return Query{}, errors.New("GET: invalid count of arguments")
-		}
-		return Query{
-			commandId: commandId,
-			args:      tokens[1:],
-		}, nil
-	case DelCommandId:
-		if len(tokens) != 2 {
-			return Query{}, errors.New("DEL: invalid count of arguments")
-		}
-		return Query{
-			commandId: commandId,
-			args:      tokens[1:],
-		}, nil
-	default:
-		return Query{}, errors.New("unknown commandId")
+func mapQuery(args []string, settings CommandSettings) (Query, error) {
+	if len(args) != settings.argCount {
+		return Query{}, errors.New("invalid count of arguments")
 	}
+	return Query{CommandId: settings.id, Args: args}, nil
 }

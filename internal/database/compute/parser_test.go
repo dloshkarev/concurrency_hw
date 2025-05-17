@@ -42,19 +42,19 @@ func TestQueryParser_ParseQuery(t *testing.T) {
 		{
 			name:      "Valid SET command",
 			query:     "SET key value",
-			wantQuery: Query{commandId: SetCommandId, args: []string{"key", "value"}},
+			wantQuery: Query{CommandId: SetCommandId, Args: []string{"key", "value"}},
 			wantErr:   false,
 		},
 		{
 			name:      "Valid GET command",
 			query:     "GET key",
-			wantQuery: Query{commandId: GetCommandId, args: []string{"key"}},
+			wantQuery: Query{CommandId: GetCommandId, Args: []string{"key"}},
 			wantErr:   false,
 		},
 		{
 			name:      "Valid DEL command",
 			query:     "DEL key",
-			wantQuery: Query{commandId: DelCommandId, args: []string{"key"}},
+			wantQuery: Query{CommandId: DelCommandId, Args: []string{"key"}},
 			wantErr:   false,
 		},
 		{
@@ -73,19 +73,19 @@ func TestQueryParser_ParseQuery(t *testing.T) {
 			name:    "SET with missing arguments",
 			query:   "SET key",
 			wantErr: true,
-			errMsg:  "SET: invalid count of arguments",
+			errMsg:  "invalid count of arguments",
 		},
 		{
 			name:    "GET with too many arguments",
 			query:   "GET key extra",
 			wantErr: true,
-			errMsg:  "GET: invalid count of arguments",
+			errMsg:  "invalid count of arguments",
 		},
 		{
 			name:    "DEL with too many arguments",
 			query:   "DEL key extra",
 			wantErr: true,
-			errMsg:  "DEL: invalid count of arguments",
+			errMsg:  "invalid count of arguments",
 		},
 	}
 
@@ -102,10 +102,10 @@ func TestQueryParser_ParseQuery(t *testing.T) {
 				}
 				return
 			}
-			if got.commandId != tt.wantQuery.commandId {
+			if got.CommandId != tt.wantQuery.CommandId {
 				t.Errorf("ParseQuery() = %+v, want %+v", got, tt.wantQuery)
 			}
-			assert.ElementsMatch(t, got.args, tt.wantQuery.args)
+			assert.ElementsMatch(t, got.Args, tt.wantQuery.Args)
 		})
 	}
 }

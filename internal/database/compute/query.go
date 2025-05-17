@@ -1,6 +1,6 @@
 package compute
 
 type Query struct {
-	commandId CommandId
-	args      []string
+	CommandId CommandId
+	Args      []string
 }
