@@ -6,7 +6,7 @@ import (
 
 func TestInMemoryEngine(t *testing.T) {
 	initialSize := 10
-	engine := NewEngine(initialSize)
+	engine := NewInMemoryEngine(initialSize)
 
 	t.Run("Set and Get", func(t *testing.T) {
 		key := "testKey"
@@ -58,7 +58,7 @@ func TestInMemoryEngine(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	engine := NewEngine(0)
+	engine := NewInMemoryEngine(0)
 
 	// TODO: Тест на конкурентный доступ пока не работает
 	t.Run("Concurrent access", func(t *testing.T) {
