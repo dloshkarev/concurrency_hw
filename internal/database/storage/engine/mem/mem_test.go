@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -60,24 +61,50 @@ func TestInMemoryEngine(t *testing.T) {
 func TestConcurrency(t *testing.T) {
 	engine := NewInMemoryEngine(0)
 
-	// TODO: Тест на конкурентный доступ пока не работает
 	t.Run("Concurrent access", func(t *testing.T) {
 		const goroutines = 100
+		const iterations = 100
 		done := make(chan bool)
+		errors := make(chan error, goroutines)
 
 		for i := 0; i < goroutines; i++ {
-			go func(i int) {
-				key := "key"
-				value := "value"
-				engine.Set(key, value)
-				engine.Get(key)
-				engine.Del(key)
+			go func(id int) {
+				for j := 0; j < iterations; j++ {
+					key := fmt.Sprintf("key_%d", id)
+					value := fmt.Sprintf("value_%d_%d", id, j)
+
+					// Set value
+					engine.Set(key, value)
+
+					// Get and verify value
+					got := engine.Get(key)
+					if got != value {
+						errors <- fmt.Errorf("goroutine %d: expected value %s, got %s", id, value, got)
+						return
+					}
+
+					// Delete value
+					engine.Del(key)
+
+					// Verify deletion
+					got = engine.Get(key)
+					if got != "" {
+						errors <- fmt.Errorf("goroutine %d: expected empty value after deletion, got %s", id, got)
+						return
+					}
+				}
 				done <- true
 			}(i)
 		}
 
+		// Wait for all goroutines to complete
 		for i := 0; i < goroutines; i++ {
-			<-done
+			select {
+			case err := <-errors:
+				t.Fatalf("Concurrency test failed: %v", err)
+			case <-done:
+				// Goroutine completed successfully
+			}
 		}
 	})
 }
