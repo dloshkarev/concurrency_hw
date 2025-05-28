@@ -5,7 +5,6 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -15,7 +14,6 @@ type TCPServer struct {
 	requestHandler   func(string) (string, error)
 	connections      int
 	requestBytesSize int
-	mu               *sync.Mutex
 }
 
 func NewTCPServer(
@@ -31,7 +29,6 @@ func NewTCPServer(
 	return &TCPServer{
 		logger:           logger,
 		conf:             conf,
-		mu:               &sync.Mutex{},
 		requestBytesSize: requestBytesSize,
 		requestHandler:   requestHandler,
 		connections:      0,
@@ -63,15 +60,12 @@ func (s *TCPServer) Run(ctx context.Context) error {
 				continue
 			}
 
-			s.mu.Lock()
 			if s.connections < s.conf.MaxConnections {
 				s.connections++
-				s.mu.Unlock()
 
 				go s.handleConnection(ctx, conn)
 			} else {
 				s.response(conn, []byte(NoConnectionsAvailable))
-				s.mu.Unlock()
 			}
 		}
 
@@ -123,12 +117,10 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 }
 
 func (s *TCPServer) CloseConnection(conn net.Conn) {
-	s.mu.Lock()
 	if err := conn.Close(); err != nil {
 		s.logger.Error("failed to close connection", zap.Error(err))
 	}
 	s.connections--
-	s.mu.Unlock()
 }
 
 func (s *TCPServer) response(conn net.Conn, response []byte) {
