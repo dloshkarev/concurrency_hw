@@ -7,23 +7,27 @@ import (
 	"fmt"
 )
 
+type PreProcessor interface {
+	ParseQuery(queryString string) (compute.Query, error)
+}
+
 type Database struct {
-	parser *compute.QueryParser
-	engine engine.Engine
+	preProcessor PreProcessor
+	engine       engine.Engine
 }
 
 func NewDatabase(
-	parser *compute.QueryParser,
+	preProcessor PreProcessor,
 	engine engine.Engine,
 ) *Database {
 	return &Database{
-		parser: parser,
-		engine: engine,
+		preProcessor: preProcessor,
+		engine:       engine,
 	}
 }
 
 func (d *Database) Execute(queryString string) (string, error) {
-	query, err := d.parser.ParseQuery(queryString)
+	query, err := d.preProcessor.ParseQuery(queryString)
 	if err != nil {
 		return network.CannotParseQuery, err
 	}
