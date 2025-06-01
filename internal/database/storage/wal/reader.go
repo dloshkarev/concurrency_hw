@@ -3,11 +3,12 @@ package wal
 import (
 	"bufio"
 	"concurrency_hw/internal/config"
-	"github.com/facette/natsort"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/facette/natsort"
 )
 
 type SegmentReader interface {
@@ -85,7 +86,10 @@ func (r *StringSegmentReader) ForEach(f func(string) error) error {
 			}
 		}
 
-		return file.Close()
+		err = file.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
