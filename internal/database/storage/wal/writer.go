@@ -26,29 +26,35 @@ func NewStringSegmentWriter(conf *config.WalConfig, segment *Segment) (*StringSe
 }
 
 func (w *StringSegmentWriter) Write(buff []string) error {
-	freeSpace := w.conf.GetMaxSegmentSize() - w.segment.size
+	maxSegmentSize := w.conf.GetMaxSegmentSize()
 	var idx int
 
-	for _, query := range buff {
-		if freeSpace-int64(len(query)) > 0 {
-			freeSpace += int64(len(query))
+	writer := bufio.NewWriter(w.segment.file)
+	for i, query := range buff {
+		querySize := int64(len(query) + 1) // +1 for newline character
+
+		if querySize > maxSegmentSize {
+			// Если запрос целиком не влезает в сегмент - падаем
+			return fmt.Errorf("query is too large (%d bytes) for max segment size (%d bytes): %s",
+				querySize, maxSegmentSize, query)
+		}
+
+		if w.segment.size+querySize < maxSegmentSize {
+			// Если в сегменте есть место под текущий запрос - пишем на диск
+			idx = i + 1
+			w.segment.size += querySize
+
+			_, err := writer.WriteString(query + "\n")
+			if err != nil {
+				return err
+			}
 		} else {
-			idx -= 1
+			// Если текущий запрос не помещается в сегмент - прерываемся и дописываем остаток буфера в следующий
 			break
 		}
-		idx++
 	}
 
 	tail := buff[idx:]
-
-	// Пишем сколько влезет
-	writer := bufio.NewWriter(w.segment.file)
-	for _, query := range buff[:idx] {
-		_, err := writer.WriteString(query + "\n")
-		if err != nil {
-			return err
-		}
-	}
 
 	err := writer.Flush()
 	if err != nil {
