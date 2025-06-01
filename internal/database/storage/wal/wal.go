@@ -44,6 +44,7 @@ type SegmentedFSWal struct {
 
 func NewSegmentedFSWal(
 	conf *config.WalConfig,
+	logger *zap.Logger,
 	segmentReader SegmentReader,
 	segmentWriter SegmentWriter,
 ) (*SegmentedFSWal, error) {
@@ -61,6 +62,7 @@ func NewSegmentedFSWal(
 		writer:   segmentWriter,
 		segment:  segment,
 		conf:     conf,
+		logger:   logger,
 		ticker:   time.NewTicker(time.Second),
 		mu:       new(sync.Mutex),
 	}, nil

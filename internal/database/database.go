@@ -22,17 +22,24 @@ func NewDatabase(
 	preProcessor PreProcessor,
 	engine engine.Engine,
 	wal wal.Wal,
-) *Database {
-	return &Database{
+) (*Database, error) {
+	db := &Database{
 		preProcessor: preProcessor,
 		engine:       engine,
 		wal:          wal,
 	}
+
+	err := db.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 func (d *Database) Load() error {
 	err := d.wal.ForEach(func(queryString string) error {
-		_, err := d.Execute(queryString)
+		_, err := d.executeWithWal(queryString, false)
 		return err
 	})
 
@@ -44,15 +51,21 @@ func (d *Database) Load() error {
 }
 
 func (d *Database) Execute(queryString string) (string, error) {
+	return d.executeWithWal(queryString, true)
+}
+
+func (d *Database) executeWithWal(queryString string, useWal bool) (string, error) {
 	query, err := d.preProcessor.ParseQuery(queryString)
 	if err != nil {
 		return network.CannotParseQuery, err
 	}
 
-	if _, exists := wal.WalCommands[query.CommandId]; exists {
-		err = d.wal.Append(queryString)
-		if err != nil {
-			return network.CommandStoreError, err
+	if useWal {
+		if _, exists := wal.WalCommands[query.CommandId]; exists {
+			err = d.wal.Append(queryString)
+			if err != nil {
+				return network.CommandStoreError, err
+			}
 		}
 	}
 
@@ -70,4 +83,13 @@ func (d *Database) Execute(queryString string) (string, error) {
 	default:
 		return fmt.Sprintf(network.UnknownCommand, query.CommandId), err
 	}
+}
+
+func (d *Database) Stop() error {
+	err := d.wal.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

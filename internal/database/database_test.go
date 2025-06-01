@@ -6,8 +6,10 @@ import (
 	"concurrency_hw/internal/database/network"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -18,7 +20,10 @@ func TestDatabase_Execute(t *testing.T) {
 
 	initializer := creator.NewCreator(logger, conf)
 
-	db := initializer.CreateDatabase()
+	db, err := initializer.CreateDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tmpWal, err := initializer.CreateWal()
 	if err != nil {
@@ -103,24 +108,97 @@ func TestDatabase_Execute(t *testing.T) {
 		})
 	}
 
-	expected := map[int]string{
-		0: "SET key1 value1",
-		1: "SET key2 value2",
-		2: "SET key3 value3",
-		3: "DEL key3",
-	}
+	t.Run("Check WAL state", func(t *testing.T) {
+		expected := map[int]string{
+			0: "SET key1 value1",
+			1: "SET key2 value2",
+			2: "SET key3 value3",
+			3: "DEL key3",
+		}
 
-	var idx int
-	_ = tmpWal.ForEach(func(queryString string) error {
-		assert.Equal(t, queryString, expected[idx])
-		idx++
-		return nil
+		var idx int
+
+		// Проверяем, что в WAL сохранены все запросы
+		_ = tmpWal.ForEach(func(queryString string) error {
+			assert.Equal(t, expected[idx], queryString)
+			idx++
+			return nil
+		})
+
+		// Останавливаем БД и запускаем снова - предыдущий wal должен быть прочитан
+		err = db.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		db2, err := initializer.CreateDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		res, err := db2.Execute("GET key1")
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, "value1"), res)
+
+		res, err = db2.Execute("GET key2")
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, "value2"), res)
+
+		res, err = db2.Execute("GET key3")
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), res)
+
+		err = db2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_ = cleanup(conf.WalConfig.DataDirectory)
 	})
 
-	err = os.RemoveAll(conf.WalConfig.DataDirectory)
+	t.Run("Check WAL closing", func(t *testing.T) {
+		// Чтобы запрос сразу не попал в файл
+		conf.WalConfig.FlushingBatchSize = 100
+		conf.WalConfig.FlushingBatchTimeout = 100 * time.Minute
+
+		initializer2 := creator.NewCreator(logger, conf)
+		db2, err := initializer2.CreateDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Проверяем что ключа нет
+		res, err := db2.Execute("GET key1")
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), res)
+
+		res, err = db2.Execute("SET key1 value1")
+		require.NoError(t, err)
+		assert.Equal(t, network.SuccessCommand, res)
+
+		// Останавливаем БД - WAL должен записаться на диск
+		err = db2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Проверяем, что в WAL сохранены все запросы
+		_ = tmpWal.ForEach(func(queryString string) error {
+			assert.Equal(t, "SET key1 value1", queryString)
+			return nil
+		})
+
+		_ = cleanup(conf.WalConfig.DataDirectory)
+	})
+}
+
+func cleanup(dir string) error {
+	// Прибираемся за собой
+	err := os.RemoveAll(dir)
 	if err != nil {
-		t.Fatal(err)
-	} else {
-		fmt.Println("wal files has been removed")
+		return err
 	}
+
+	fmt.Println("wal files has been removed")
+	return nil
 }

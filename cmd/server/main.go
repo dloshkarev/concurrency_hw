@@ -28,7 +28,10 @@ func main() {
 
 	initializer := creator.NewCreator(logger, conf)
 
-	db := initializer.CreateDatabase()
+	db, err := initializer.CreateDatabase()
+	if err != nil {
+		logger.Fatal("Failed to initialize database", zap.Error(err))
+	}
 
 	server, err := network.NewTCPServer(logger, conf.NetworkConfig, db.Execute)
 	if err != nil {

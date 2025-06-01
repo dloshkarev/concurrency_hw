@@ -34,7 +34,7 @@ func (i *Creator) CreateWal() (wal.Wal, error) {
 		return nil, err
 	}
 
-	walInstance, err := wal.NewSegmentedFSWal(i.conf.WalConfig, walReader, walWriter)
+	walInstance, err := wal.NewSegmentedFSWal(i.conf.WalConfig, i.logger, walReader, walWriter)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (i *Creator) CreateWal() (wal.Wal, error) {
 	return walInstance, nil
 }
 
-func (i *Creator) CreateDatabase() *database.Database {
+func (i *Creator) CreateDatabase() (*database.Database, error) {
 	parser, err := compute.NewQueryParser(i.logger)
 	if err != nil {
 		i.logger.Fatal("Failed to create query parser", zap.Error(err))
