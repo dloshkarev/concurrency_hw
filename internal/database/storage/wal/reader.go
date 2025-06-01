@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type SegmentReader interface {
@@ -23,7 +24,17 @@ func NewStringSegmentReader(conf *config.WalConfig) *StringSegmentReader {
 }
 
 func (r *StringSegmentReader) Open() (*Segment, error) {
+	err := createDirIfNotExists(r.conf.DataDirectory)
+	if err != nil {
+		return nil, err
+	}
+
 	lastSegmentPath, err := findLastSegmentPath(r.conf.DataDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	err = createSegmentFileIfNotExists(lastSegmentPath)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +94,8 @@ func (r *StringSegmentReader) ForEach(f func(string) error) error {
 func getSegmentNum(filePath string) (int, error) {
 	filename := filepath.Base(filePath)
 	ext := filepath.Ext(filename)
-	num, err := strconv.Atoi(filename[:len(filename)-len(ext)])
+	withoutExt := strings.TrimSuffix(filename, ext)
+	num, err := strconv.Atoi(withoutExt)
 	if err != nil {
 		return 0, err
 	}
@@ -113,6 +125,14 @@ func findLastSegmentPath(dir string) (string, error) {
 	filenames, err := findSortedSegments(dir)
 	if err != nil {
 		return "", err
+	}
+
+	if len(filenames) == 0 {
+		firstSegment, err := filepath.Abs(filepath.Join(dir, "0"))
+		if err != nil {
+			return "", err
+		}
+		return firstSegment, nil
 	}
 
 	lastSegmentPath := filenames[len(filenames)-1]

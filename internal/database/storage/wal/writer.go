@@ -29,14 +29,14 @@ func (w *StringSegmentWriter) Write(buff []string) error {
 	freeSpace := w.conf.GetMaxSegmentSize() - w.segment.size
 	var idx int
 
-	for i, query := range buff {
-		if freeSpace+int64(len(query)) < w.conf.GetMaxSegmentSize() {
+	for _, query := range buff {
+		if freeSpace-int64(len(query)) > 0 {
 			freeSpace += int64(len(query))
 		} else {
 			idx -= 1
 			break
 		}
-		idx = i
+		idx++
 	}
 
 	tail := buff[idx:]
@@ -95,6 +95,34 @@ func (w *StringSegmentWriter) createNewSegment() error {
 	w.segment.segmentNum += 1
 	w.segment.size = 0
 	w.segment.file = segmentFile
+
+	return nil
+}
+
+func createDirIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(path, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func createSegmentFileIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		segmentFile, err := os.Create(path)
+		if err != nil {
+			return err
+		}
+
+		err = segmentFile.Close()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
 
 	return nil
 }

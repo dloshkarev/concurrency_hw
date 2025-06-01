@@ -2,6 +2,7 @@ package wal
 
 import (
 	"concurrency_hw/internal/config"
+	"concurrency_hw/internal/database/compute"
 	"errors"
 	"go.uber.org/zap"
 	"os"
@@ -9,7 +10,12 @@ import (
 	"time"
 )
 
-const extension = ".seg"
+const extension = "seg"
+
+var WalCommands = map[compute.CommandId]bool{
+	compute.SetCommandId: true,
+	compute.DelCommandId: true,
+}
 
 type Wal interface {
 	ForEach(func(string) error) error
@@ -79,6 +85,7 @@ func (s *SegmentedFSWal) Append(queryString string) error {
 		if err != nil {
 			return err
 		}
+		s.buff = s.buff[:0]
 	} else {
 		s.mu.Unlock()
 	}

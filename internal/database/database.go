@@ -49,9 +49,11 @@ func (d *Database) Execute(queryString string) (string, error) {
 		return network.CannotParseQuery, err
 	}
 
-	err = d.wal.Append(queryString)
-	if err != nil {
-		return network.CommandStoreError, err
+	if _, exists := wal.WalCommands[query.CommandId]; exists {
+		err = d.wal.Append(queryString)
+		if err != nil {
+			return network.CommandStoreError, err
+		}
 	}
 
 	args := query.Args
