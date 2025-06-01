@@ -8,7 +8,7 @@ func TestNetworkConfig_ParseRequestSizeInBytes(t *testing.T) {
 	tests := []struct {
 		name    string
 		size    string
-		want    int
+		want    int64
 		wantErr bool
 	}{
 		{
@@ -54,13 +54,13 @@ func TestNetworkConfig_ParseRequestSizeInBytes(t *testing.T) {
 			cfg := &NetworkConfig{
 				MaxMessageSize: tt.size,
 			}
-			got, err := cfg.ParseRequestSizeInBytes()
+			got, err := ParseSizeInBytes(cfg.MaxMessageSize)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NetworkConfig.ParseRequestSizeInBytes() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NetworkConfig.ParseSizeInBytes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("NetworkConfig.ParseRequestSizeInBytes() = %v, want %v", got, tt.want)
+				t.Errorf("NetworkConfig.ParseSizeInBytes() = %v, want %v", got, tt.want)
 			}
 		})
 	}

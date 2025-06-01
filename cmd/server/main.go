@@ -6,6 +6,7 @@ import (
 	"concurrency_hw/internal/database/compute"
 	"concurrency_hw/internal/database/network"
 	"concurrency_hw/internal/database/storage/engine/mem"
+	"concurrency_hw/internal/database/storage/wal"
 	"context"
 	"errors"
 	"go.uber.org/zap"
@@ -28,7 +29,7 @@ func main() {
 		_ = logger.Sync()
 	}()
 
-	db := createDatabase(logger, conf.EngineConfig)
+	db := createDatabase(logger, conf)
 
 	server, err := network.NewTCPServer(logger, conf.NetworkConfig, db.Execute)
 	if err != nil {
@@ -87,15 +88,41 @@ func createLogger(conf *config.LoggingConfig) *zap.Logger {
 	return zap.Must(cfg.Build())
 }
 
-func createDatabase(logger *zap.Logger, conf *config.EngineConfig) *database.Database {
+func createDatabase(logger *zap.Logger, conf *config.AppConfig) *database.Database {
 	parser, err := compute.NewQueryParser(logger)
 	if err != nil {
 		logger.Fatal("Failed to create query parser", zap.Error(err))
 	}
 
-	engine := mem.NewInMemoryEngine(conf.StartSize)
+	engine := mem.NewInMemoryEngine(conf.EngineConfig.StartSize)
 
-	return database.NewDatabase(parser, engine)
+	walInstance, err := createWal(conf.WalConfig)
+	if err != nil {
+		logger.Fatal("Failed to create wal", zap.Error(err))
+	}
+
+	return database.NewDatabase(parser, engine, walInstance)
+}
+
+func createWal(conf *config.WalConfig) (wal.Wal, error) {
+	walReader := wal.NewStringSegmentReader(conf)
+
+	lastSegment, err := walReader.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	walWriter, err := wal.NewStringSegmentWriter(conf, lastSegment)
+	if err != nil {
+		return nil, err
+	}
+
+	walInstance, err := wal.NewSegmentedFSWal(conf, walReader, walWriter)
+	if err != nil {
+		return nil, err
+	}
+
+	return walInstance, nil
 }
 
 func shutdown(logger *zap.Logger, cancel context.CancelFunc) {

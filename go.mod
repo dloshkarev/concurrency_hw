@@ -3,6 +3,7 @@ module concurrency_hw
 go 1.24
 
 require (
+	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.27.0
