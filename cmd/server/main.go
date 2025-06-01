@@ -3,6 +3,7 @@ package main
 import (
 	"concurrency_hw/internal/config"
 	"concurrency_hw/internal/creator"
+	"concurrency_hw/internal/database"
 	"concurrency_hw/internal/database/network"
 	"context"
 	"errors"
@@ -45,7 +46,7 @@ func main() {
 		}
 	}()
 
-	shutdown(logger, cancel)
+	shutdown(logger, db, cancel)
 }
 
 func createLogger(conf *config.LoggingConfig) *zap.Logger {
@@ -90,7 +91,7 @@ func createLogger(conf *config.LoggingConfig) *zap.Logger {
 	return zap.Must(cfg.Build())
 }
 
-func shutdown(logger *zap.Logger, cancel context.CancelFunc) {
+func shutdown(logger *zap.Logger, db *database.Database, cancel context.CancelFunc) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan,
 		syscall.SIGINT,
@@ -99,5 +100,11 @@ func shutdown(logger *zap.Logger, cancel context.CancelFunc) {
 
 	<-sigChan
 	logger.Info("shutting down server...")
+
+	err := db.Stop()
+	if err != nil {
+		logger.Fatal("Failed to shutdown server", zap.Error(err))
+	}
+
 	cancel()
 }

@@ -55,7 +55,7 @@ func NewSegmentedFSWal(
 
 	buffLen := int(1.1 * float64(conf.FlushingBatchSize))
 
-	return &SegmentedFSWal{
+	wal := &SegmentedFSWal{
 		buff:     make([]string, 0, buffLen),
 		buffSize: 0,
 		reader:   segmentReader,
@@ -65,7 +65,13 @@ func NewSegmentedFSWal(
 		logger:   logger,
 		ticker:   time.NewTicker(time.Second),
 		mu:       new(sync.Mutex),
-	}, nil
+	}
+
+	go func() {
+		wal.autoFlush()
+	}()
+
+	return wal, nil
 }
 
 func (s *SegmentedFSWal) ForEach(f func(string) error) error {
@@ -115,6 +121,8 @@ func (s *SegmentedFSWal) flush() error {
 	if err != nil {
 		return err
 	}
+
+	s.buff = s.buff[:0]
 
 	return nil
 }

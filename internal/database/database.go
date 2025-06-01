@@ -9,6 +9,7 @@ import (
 )
 
 type PreProcessor interface {
+	CleanQuery(queryString string) string
 	ParseQuery(queryString string) (compute.Query, error)
 }
 
@@ -55,14 +56,16 @@ func (d *Database) Execute(queryString string) (string, error) {
 }
 
 func (d *Database) executeWithWal(queryString string, useWal bool) (string, error) {
-	query, err := d.preProcessor.ParseQuery(queryString)
+	cleaned := d.preProcessor.CleanQuery(queryString)
+
+	query, err := d.preProcessor.ParseQuery(cleaned)
 	if err != nil {
 		return network.CannotParseQuery, err
 	}
 
 	if useWal {
 		if _, exists := wal.WalCommands[query.CommandId]; exists {
-			err = d.wal.Append(queryString)
+			err = d.wal.Append(cleaned)
 			if err != nil {
 				return network.CommandStoreError, err
 			}
