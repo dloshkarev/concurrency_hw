@@ -2,10 +2,9 @@ package main
 
 import (
 	"concurrency_hw/internal/config"
+	"concurrency_hw/internal/creator"
 	"concurrency_hw/internal/database"
-	"concurrency_hw/internal/database/compute"
 	"concurrency_hw/internal/database/network"
-	"concurrency_hw/internal/database/storage/engine/mem"
 	"context"
 	"errors"
 	"go.uber.org/zap"
@@ -28,7 +27,12 @@ func main() {
 		_ = logger.Sync()
 	}()
 
-	db := createDatabase(logger, conf.EngineConfig)
+	initializer := creator.NewCreator(logger, conf)
+
+	db, err := initializer.CreateDatabase()
+	if err != nil {
+		logger.Fatal("Failed to initialize database", zap.Error(err))
+	}
 
 	server, err := network.NewTCPServer(logger, conf.NetworkConfig, db.Execute)
 	if err != nil {
@@ -42,7 +46,7 @@ func main() {
 		}
 	}()
 
-	shutdown(logger, cancel)
+	shutdown(logger, db, cancel)
 }
 
 func createLogger(conf *config.LoggingConfig) *zap.Logger {
@@ -87,18 +91,7 @@ func createLogger(conf *config.LoggingConfig) *zap.Logger {
 	return zap.Must(cfg.Build())
 }
 
-func createDatabase(logger *zap.Logger, conf *config.EngineConfig) *database.Database {
-	parser, err := compute.NewQueryParser(logger)
-	if err != nil {
-		logger.Fatal("Failed to create query parser", zap.Error(err))
-	}
-
-	engine := mem.NewInMemoryEngine(conf.StartSize)
-
-	return database.NewDatabase(parser, engine)
-}
-
-func shutdown(logger *zap.Logger, cancel context.CancelFunc) {
+func shutdown(logger *zap.Logger, db *database.Database, cancel context.CancelFunc) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan,
 		syscall.SIGINT,
@@ -107,5 +100,11 @@ func shutdown(logger *zap.Logger, cancel context.CancelFunc) {
 
 	<-sigChan
 	logger.Info("shutting down server...")
+
+	err := db.Stop()
+	if err != nil {
+		logger.Fatal("Failed to shutdown server", zap.Error(err))
+	}
+
 	cancel()
 }

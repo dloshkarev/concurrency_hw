@@ -1,13 +1,16 @@
-package mem
+//go:build unit
+
+package mem_test
 
 import (
+	"concurrency_hw/internal/database/storage/engine/mem"
 	"fmt"
 	"testing"
 )
 
 func TestInMemoryEngine(t *testing.T) {
 	initialSize := 10
-	engine := NewInMemoryEngine(initialSize)
+	engine := mem.NewInMemoryEngine(initialSize)
 
 	t.Run("Set and Get", func(t *testing.T) {
 		key := "testKey"
@@ -59,7 +62,7 @@ func TestInMemoryEngine(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	engine := NewInMemoryEngine(0)
+	engine := mem.NewInMemoryEngine(0)
 
 	t.Run("Concurrent access", func(t *testing.T) {
 		const goroutines = 100

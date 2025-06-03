@@ -4,6 +4,7 @@ BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 GO_LDFLAGS ?= -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)
 # Путь к конфигу
 CONFIG_PATH ?= $(shell pwd)/config/config.yaml
+TEST_CONFIG_PATH ?= $(shell pwd)/config/config-test.yaml
 
 .PHONY: all build clean test run lint vendor help
 
@@ -28,9 +29,15 @@ buildClient:
 runClient:
 	./client --address=localhost:3223
 
-## test: Запустить тесты
-test:
-	@go test -v -race ./...
+## test: Запустить Unit-тесты
+test-unit:
+	export CONDB_CONFIG_PATH=$(TEST_CONFIG_PATH) && \
+	go test -race -tags=unit -v ./...
+
+## test-e2e: Запустить e2e-тест
+test-e2e:
+	export CONDB_CONFIG_PATH=$(TEST_CONFIG_PATH) && \
+	go test -tags=e2e -v ./...
 
 ## test-cover: Запустить тесты с покрытием
 test-cover:

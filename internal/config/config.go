@@ -15,6 +15,7 @@ type AppConfig struct {
 	EngineConfig  *EngineConfig  `yaml:"engine"`
 	NetworkConfig *NetworkConfig `yaml:"network"`
 	LoggingConfig *LoggingConfig `yaml:"logging"`
+	WalConfig     *WalConfig     `yaml:"wal"`
 }
 
 type EngineConfig struct {
@@ -31,7 +32,29 @@ type NetworkConfig struct {
 
 type LoggingConfig struct {
 	Level  string `yaml:"level" env-default:"info"`
-	Output string `yaml:"output" env-default:"/log/output.log"`
+	Output string `yaml:"output" env-default:"/wal/output.wal"`
+}
+
+type WalConfig struct {
+	FlushingBatchSize     int           `yaml:"flushing_batch_size" env-default:"100"`
+	FlushingBatchTimeout  time.Duration `yaml:"flushing_batch_timeout" env-default:"10ms"`
+	MaxSegmentSize        string        `yaml:"max_segment_size" env-default:"1KB"`
+	DataDirectory         string        `yaml:"data_directory" env-default:"/data"`
+	maxSegmentSizeInBytes int64
+}
+
+func (c *WalConfig) GetMaxSegmentSize() int64 {
+	if c.maxSegmentSizeInBytes > 0 {
+		return c.maxSegmentSizeInBytes
+	}
+	maxSegmentSizeInBytes, err := ParseSizeInBytes(c.MaxSegmentSize)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c.maxSegmentSizeInBytes = maxSegmentSizeInBytes
+
+	return maxSegmentSizeInBytes
 }
 
 func Load() *AppConfig {
@@ -53,27 +76,30 @@ func Load() *AppConfig {
 	return &cfg
 }
 
-func (c *NetworkConfig) ParseRequestSizeInBytes() (int, error) {
+func ParseSizeInBytes(val string) (int64, error) {
 	rxp := regexp.MustCompile(`(\d+)(b|kb|mb)`)
-	matches := rxp.FindStringSubmatch(strings.ToLower(c.MaxMessageSize))
+	matches := rxp.FindStringSubmatch(strings.ToLower(val))
 
 	if len(matches) != 3 {
-		return 0, fmt.Errorf("unknown format of max_message_size in bytes: %s", c.MaxMessageSize)
+		return 0, fmt.Errorf("unknown format of max_message_size in bytes: %s", val)
 	}
 
 	size, err := strconv.Atoi(matches[1])
+	var sizeInBytes int64
 	if err != nil {
-		return 0, fmt.Errorf("cannot parse size of max_message_size in bytes: %s", c.MaxMessageSize)
+		return 0, fmt.Errorf("cannot parse size of max_message_size in bytes: %s", val)
 	}
 
 	switch matches[2] {
 	case "b":
-		return size, nil
+		sizeInBytes = int64(size)
 	case "kb":
-		return size << 10, nil
+		sizeInBytes = int64(size) << 10
 	case "mb":
-		return size << 20, nil
+		sizeInBytes = int64(size) << 20
 	default:
-		return 0, fmt.Errorf("cannot dimension of max_message_size in bytes: %s", c.MaxMessageSize)
+		return 0, fmt.Errorf("cannot dimension of max_message_size in bytes: %s", val)
 	}
+
+	return sizeInBytes, nil
 }

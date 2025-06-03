@@ -1,3 +1,5 @@
+//go:build e2e
+
 package e2e
 
 import (
@@ -11,6 +13,8 @@ import (
 	"testing"
 	"time"
 )
+
+const longValue = "qwertyuiopasdrftghjnksdcdsiyvcbasoipdmqwipwgdutyeqwfdiyuqwn;djk1ndlhjqwbviduyqwhpdiqwndljhqwbidytqgodiuwqn;dkjwqbdiygqvwuoydnqwjkdbwqudbqwiudmqw'dnqiuwdbquwnd;owq"
 
 func TestTCPServer(t *testing.T) {
 	address := "localhost:3223"
@@ -60,6 +64,12 @@ func TestTCPServer(t *testing.T) {
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(network.GetResult, ""), string(response))
+
+	// Проверка WAL
+	for range 1000 {
+		_, err := cli.Execute(fmt.Sprintf("SET wal %v", longValue))
+		require.NoError(t, err)
+	}
 
 	require.NoError(t, cli.Disconnect())
 	require.NoError(t, cmd.Process.Signal(syscall.SIGTERM))

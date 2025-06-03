@@ -43,6 +43,10 @@ func (p *QueryParser) ParseQuery(queryString string) (Query, error) {
 	return query, nil
 }
 
+func (p *QueryParser) CleanQuery(queryString string) string {
+	return strings.ReplaceAll(queryString, "\n", "")
+}
+
 func parseCommandSettings(token string) (CommandSettings, error) {
 	if setting, exists := commandSettings[token]; exists {
 		return setting, nil

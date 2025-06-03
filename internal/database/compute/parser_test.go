@@ -1,6 +1,9 @@
-package compute
+//go:build unit
+
+package compute_test
 
 import (
+	"concurrency_hw/internal/database/compute"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -19,7 +22,7 @@ func TestNewQueryParser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewQueryParser(tt.logger)
+			_, err := compute.NewQueryParser(tt.logger)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewQueryParser() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -30,31 +33,31 @@ func TestNewQueryParser(t *testing.T) {
 
 func TestQueryParser_ParseQuery(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	parser, _ := NewQueryParser(logger)
+	parser, _ := compute.NewQueryParser(logger)
 
 	tests := []struct {
 		name      string
 		query     string
-		wantQuery Query
+		wantQuery compute.Query
 		wantErr   bool
 		errMsg    string
 	}{
 		{
 			name:      "Valid SET command",
 			query:     "SET key value",
-			wantQuery: Query{CommandId: SetCommandId, Args: []string{"key", "value"}},
+			wantQuery: compute.Query{CommandId: compute.SetCommandId, Args: []string{"key", "value"}},
 			wantErr:   false,
 		},
 		{
 			name:      "Valid GET command",
 			query:     "GET key",
-			wantQuery: Query{CommandId: GetCommandId, Args: []string{"key"}},
+			wantQuery: compute.Query{CommandId: compute.GetCommandId, Args: []string{"key"}},
 			wantErr:   false,
 		},
 		{
 			name:      "Valid DEL command",
 			query:     "DEL key",
-			wantQuery: Query{CommandId: DelCommandId, Args: []string{"key"}},
+			wantQuery: compute.Query{CommandId: compute.DelCommandId, Args: []string{"key"}},
 			wantErr:   false,
 		},
 		{

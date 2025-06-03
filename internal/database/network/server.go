@@ -13,7 +13,7 @@ type TCPServer struct {
 	conf             *config.NetworkConfig
 	requestHandler   func(string) (string, error)
 	connections      int
-	requestBytesSize int
+	requestBytesSize int64
 }
 
 func NewTCPServer(
@@ -21,7 +21,7 @@ func NewTCPServer(
 	conf *config.NetworkConfig,
 	requestHandler func(string) (string, error),
 ) (*TCPServer, error) {
-	requestBytesSize, err := conf.ParseRequestSizeInBytes()
+	requestBytesSize, err := config.ParseSizeInBytes(conf.MaxMessageSize)
 	if err != nil {
 		return nil, err
 	}
