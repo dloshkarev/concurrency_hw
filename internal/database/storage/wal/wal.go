@@ -38,6 +38,7 @@ type SegmentedFSWal struct {
 	buffSize int
 	buff     []string
 	segment  *Segment
+	skipTick bool
 	ticker   *time.Ticker
 	mu       *sync.Mutex
 }
@@ -45,14 +46,10 @@ type SegmentedFSWal struct {
 func NewSegmentedFSWal(
 	conf *config.WalConfig,
 	logger *zap.Logger,
+	lastSegment *Segment,
 	segmentReader SegmentReader,
 	segmentWriter SegmentWriter,
 ) (*SegmentedFSWal, error) {
-	segment, err := segmentReader.Open()
-	if err != nil {
-		return nil, err
-	}
-
 	buffLen := int(1.1 * float64(conf.FlushingBatchSize))
 
 	wal := &SegmentedFSWal{
@@ -60,7 +57,7 @@ func NewSegmentedFSWal(
 		buffSize: 0,
 		reader:   segmentReader,
 		writer:   segmentWriter,
-		segment:  segment,
+		segment:  lastSegment,
 		conf:     conf,
 		logger:   logger,
 		ticker:   time.NewTicker(time.Second),
@@ -90,10 +87,14 @@ func (s *SegmentedFSWal) Append(queryString string) error {
 	if len(s.buff) >= s.conf.FlushingBatchSize {
 		s.mu.Unlock()
 		err := s.flush()
+
+		s.mu.Lock()
+		s.skipTick = true
+		s.mu.Unlock()
+
 		if err != nil {
 			return err
 		}
-		s.buff = s.buff[:0]
 	} else {
 		s.mu.Unlock()
 	}
@@ -128,14 +129,19 @@ func (s *SegmentedFSWal) flush() error {
 }
 
 func (s *SegmentedFSWal) autoFlush() {
-	for {
-		select {
-		case <-s.ticker.C:
-			if s.buffSize > 0 {
-				err := s.flush()
-				if err != nil {
-					s.logger.Error("auto flush been failed", zap.Error(err))
-				}
+	for range s.ticker.C {
+		s.mu.Lock()
+		if s.skipTick {
+			s.skipTick = false
+			s.mu.Unlock()
+			continue
+		}
+		s.mu.Unlock()
+
+		if s.buffSize > 0 {
+			err := s.flush()
+			if err != nil {
+				s.logger.Error("auto flush has been failed", zap.Error(err))
 			}
 		}
 	}

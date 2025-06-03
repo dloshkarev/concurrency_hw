@@ -66,7 +66,11 @@ func (w *StringSegmentWriter) Write(buff []string) error {
 		return err
 	}
 
-	if len(tail) > 0 {
+	return w.writeRemains(tail)
+}
+
+func (w *StringSegmentWriter) writeRemains(remains []string) error {
+	if len(remains) > 0 {
 		err := w.segment.file.Close()
 		if err != nil {
 			return err
@@ -78,7 +82,7 @@ func (w *StringSegmentWriter) Write(buff []string) error {
 			return err
 		}
 
-		err = w.Write(tail)
+		err = w.Write(remains)
 		if err != nil {
 			return err
 		}

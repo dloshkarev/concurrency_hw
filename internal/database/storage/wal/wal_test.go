@@ -1,3 +1,5 @@
+//go:build unit
+
 package wal
 
 import (
@@ -26,12 +28,9 @@ func TestNewSegmentedFSWal(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	// Создаем сегмент через reader
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -39,7 +38,7 @@ func TestNewSegmentedFSWal(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -86,11 +85,9 @@ func TestSegmentedFSWal_Append(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -98,7 +95,7 @@ func TestSegmentedFSWal_Append(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -143,11 +140,9 @@ func TestSegmentedFSWal_Append_TooLarge(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -155,7 +150,7 @@ func TestSegmentedFSWal_Append_TooLarge(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -220,11 +215,9 @@ func TestSegmentedFSWal_ForEach(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -232,7 +225,7 @@ func TestSegmentedFSWal_ForEach(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -297,11 +290,9 @@ func TestSegmentedFSWal_ForEach_CallbackError(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -309,7 +300,7 @@ func TestSegmentedFSWal_ForEach_CallbackError(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -348,11 +339,9 @@ func TestSegmentedFSWal_Close(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -360,7 +349,7 @@ func TestSegmentedFSWal_Close(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -418,11 +407,9 @@ func TestSegmentedFSWal_IntegrationAppendAndRead(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -430,7 +417,7 @@ func TestSegmentedFSWal_IntegrationAppendAndRead(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -457,10 +444,9 @@ func TestSegmentedFSWal_IntegrationAppendAndRead(t *testing.T) {
 	}
 
 	// Создаем новый WAL для чтения
-	reader2 := NewStringSegmentReader(conf)
-	segment2, err := reader2.Open()
+	reader2, segment2, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment for reading: %v", err)
+		t.Fatalf("Failed to create reader for reading: %v", err)
 	}
 
 	writer2, err := NewStringSegmentWriter(conf, segment2)
@@ -468,7 +454,7 @@ func TestSegmentedFSWal_IntegrationAppendAndRead(t *testing.T) {
 		t.Fatalf("Failed to create writer for reading: %v", err)
 	}
 
-	wal2, err := NewSegmentedFSWal(conf, logger, reader2, writer2)
+	wal2, err := NewSegmentedFSWal(conf, logger, segment2, reader2, writer2)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() for reading error = %v", err)
 	}
@@ -516,11 +502,9 @@ func TestSegmentedFSWal_Append_BufferNotFull(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -528,7 +512,7 @@ func TestSegmentedFSWal_Append_BufferNotFull(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -572,11 +556,9 @@ func TestSegmentedFSWal_FlushError(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -584,7 +566,7 @@ func TestSegmentedFSWal_FlushError(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -616,11 +598,9 @@ func TestSegmentedFSWal_MultipleFlushes(t *testing.T) {
 	}
 
 	logger, _ := zap.NewDevelopment()
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	reader, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Failed to open segment: %v", err)
+		t.Fatalf("Failed to create reader: %v", err)
 	}
 
 	writer, err := NewStringSegmentWriter(conf, segment)
@@ -628,7 +608,7 @@ func TestSegmentedFSWal_MultipleFlushes(t *testing.T) {
 		t.Fatalf("Failed to create writer: %v", err)
 	}
 
-	wal, err := NewSegmentedFSWal(conf, logger, reader, writer)
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
 	if err != nil {
 		t.Fatalf("NewSegmentedFSWal() error = %v", err)
 	}
@@ -662,5 +642,206 @@ func TestSegmentedFSWal_MultipleFlushes(t *testing.T) {
 
 	if wal.buff[0] != "SET key5 value5" {
 		t.Errorf("Expected last item to be 'SET key5 value5', got '%s'", wal.buff[0])
+	}
+}
+
+// TestNewSegmentedFSWal_SegmentIntegration тестирует интеграцию с передаваемым сегментом
+// Проверяет что WAL корректно работает с переданным сегментом
+func TestNewSegmentedFSWal_SegmentIntegration(t *testing.T) {
+	tempDir := createTmpDir(t)
+	defer cleanupDir(t, tempDir)
+
+	conf := &config.WalConfig{
+		MaxSegmentSize:       "1KB",
+		DataDirectory:        tempDir,
+		FlushingBatchSize:    100,
+		FlushingBatchTimeout: 10 * time.Millisecond,
+	}
+
+	logger, _ := zap.NewDevelopment()
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("Failed to create reader: %v", err)
+	}
+
+	// Проверяем начальное состояние сегмента
+	initialSize := segment.size
+	initialSegmentNum := segment.segmentNum
+
+	writer, err := NewStringSegmentWriter(conf, segment)
+	if err != nil {
+		t.Fatalf("Failed to create writer: %v", err)
+	}
+
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
+	if err != nil {
+		t.Fatalf("NewSegmentedFSWal() error = %v", err)
+	}
+
+	// Проверяем, что WAL использует переданный сегмент
+	if wal.segment != segment {
+		t.Error("Expected WAL to use the passed segment")
+	}
+
+	// Добавляем данные и проверяем, что сегмент обновляется
+	err = wal.Append("SET key1 value1")
+	if err != nil {
+		t.Fatalf("Append() error = %v", err)
+	}
+
+	// Принудительный flush чтобы данные записались
+	err = wal.Close()
+	if err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	// Создаем новый WAL для проверки данных
+	_, segment2, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("Failed to create reader for verification: %v", err)
+	}
+
+	defer func() {
+		if segment2 != nil && segment2.file != nil {
+			_ = segment2.file.Close()
+		}
+	}()
+
+	// Проверяем, что данные записались
+	if segment2.size <= initialSize {
+		t.Errorf("Expected segment size to increase after write, initial: %d, current: %d", initialSize, segment2.size)
+	}
+
+	if segment2.segmentNum != initialSegmentNum {
+		t.Errorf("Expected segment number to remain %d, got %d", initialSegmentNum, segment2.segmentNum)
+	}
+}
+
+// TestNewSegmentedFSWal_ErrorHandling тестирует обработку ошибок при создании WAL
+// Проверяет что WAL корректно обрабатывает ошибочные ситуации
+func TestNewSegmentedFSWal_ErrorHandling(t *testing.T) {
+	tempDir := createTmpDir(t)
+	defer cleanupDir(t, tempDir)
+
+	conf := &config.WalConfig{
+		MaxSegmentSize:       "1KB",
+		DataDirectory:        tempDir,
+		FlushingBatchSize:    100,
+		FlushingBatchTimeout: 10 * time.Millisecond,
+	}
+
+	logger, _ := zap.NewDevelopment()
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("Failed to create reader: %v", err)
+	}
+
+	defer func() {
+		if segment != nil && segment.file != nil {
+			_ = segment.file.Close()
+		}
+	}()
+
+	writer, err := NewStringSegmentWriter(conf, segment)
+	if err != nil {
+		t.Fatalf("Failed to create writer: %v", err)
+	}
+
+	// Тестируем создание WAL с nil сегментом - это должно работать
+	wal, err := NewSegmentedFSWal(conf, logger, nil, reader, writer)
+	if err != nil {
+		t.Fatalf("NewSegmentedFSWal() should not error with nil segment, got: %v", err)
+	}
+
+	if wal.segment != nil {
+		t.Error("Expected WAL segment to be nil when nil is passed")
+	}
+
+	// Проверяем что WAL создался с корректными компонентами
+	if wal.reader != reader {
+		t.Error("Expected WAL reader to be set correctly")
+	}
+
+	if wal.writer != writer {
+		t.Error("Expected WAL writer to be set correctly")
+	}
+
+	if wal.conf != conf {
+		t.Error("Expected WAL config to be set correctly")
+	}
+
+	// Безопасно закрываем WAL
+	if closeErr := wal.Close(); closeErr != nil {
+		// Ошибка при закрытии ожидаема из-за nil сегмента, но тест должен пройти
+		t.Logf("Expected error during close with nil segment: %v", closeErr)
+	}
+}
+
+// TestSegmentedFSWal_SegmentStateAfterOperations тестирует состояние сегмента после операций
+// Проверяет что состояние сегмента корректно отслеживается при операциях WAL
+func TestSegmentedFSWal_SegmentStateAfterOperations(t *testing.T) {
+	tempDir := createTmpDir(t)
+	defer cleanupDir(t, tempDir)
+
+	conf := &config.WalConfig{
+		MaxSegmentSize:       "100b", // Маленький размер для тестирования
+		DataDirectory:        tempDir,
+		FlushingBatchSize:    1, // Немедленный flush
+		FlushingBatchTimeout: 10 * time.Millisecond,
+	}
+
+	logger, _ := zap.NewDevelopment()
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("Failed to create reader: %v", err)
+	}
+
+	initialSize := segment.size
+	initialSegmentNum := segment.segmentNum
+
+	writer, err := NewStringSegmentWriter(conf, segment)
+	if err != nil {
+		t.Fatalf("Failed to create writer: %v", err)
+	}
+
+	wal, err := NewSegmentedFSWal(conf, logger, segment, reader, writer)
+	if err != nil {
+		t.Fatalf("NewSegmentedFSWal() error = %v", err)
+	}
+
+	defer func() {
+		if closeErr := wal.Close(); closeErr != nil {
+			t.Errorf("Failed to close WAL: %v", closeErr)
+		}
+	}()
+
+	// Добавляем несколько записей, чтобы проверить состояние сегмента
+	queries := []string{
+		"SET key1 value1", // Эта запись должна поместиться
+		"SET key2 value2", // Эта может вызвать создание нового сегмента
+	}
+
+	for _, query := range queries {
+		err = wal.Append(query)
+		if err != nil {
+			t.Fatalf("Append() error = %v", err)
+		}
+	}
+
+	// Проверяем, что размер сегмента изменился или создался новый сегмент
+	// (в зависимости от того, поместились ли данные)
+	currentSegment := wal.segment
+	if currentSegment != nil {
+		if currentSegment.segmentNum == initialSegmentNum {
+			// Если остались в том же сегменте, размер должен увеличиться
+			if currentSegment.size <= initialSize {
+				t.Errorf("Expected segment size to increase, initial: %d, current: %d", initialSize, currentSegment.size)
+			}
+		} else {
+			// Если создался новый сегмент, номер должен увеличиться
+			if currentSegment.segmentNum <= initialSegmentNum {
+				t.Errorf("Expected segment number to increase, initial: %d, current: %d", initialSegmentNum, currentSegment.segmentNum)
+			}
+		}
 	}
 }

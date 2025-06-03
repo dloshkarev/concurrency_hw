@@ -1,3 +1,5 @@
+//go:build unit
+
 package wal
 
 import (
@@ -16,7 +18,18 @@ func TestNewStringSegmentReader(t *testing.T) {
 		DataDirectory:  "/tmp/test",
 	}
 
-	reader := NewStringSegmentReader(conf)
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
+	}
+
+	defer func() {
+		if segment != nil && segment.file != nil {
+			if closeErr := segment.file.Close(); closeErr != nil {
+				t.Errorf("Failed to close segment file: %v", closeErr)
+			}
+		}
+	}()
 
 	if reader.conf != conf {
 		t.Errorf("Expected conf to be set")
@@ -34,11 +47,9 @@ func TestStringSegmentReader_Open(t *testing.T) {
 		DataDirectory:  tempDir,
 	}
 
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	_, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Open() error = %v", err)
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
 	}
 
 	defer func() {
@@ -84,11 +95,9 @@ func TestStringSegmentReader_Open_ExistingSegments(t *testing.T) {
 		DataDirectory:  tempDir,
 	}
 
-	reader := NewStringSegmentReader(conf)
-
-	segment, err := reader.Open()
+	_, segment, err := NewStringSegmentReader(conf)
 	if err != nil {
-		t.Fatalf("Open() error = %v", err)
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
 	}
 
 	defer func() {
@@ -143,10 +152,19 @@ func TestStringSegmentReader_ForEach(t *testing.T) {
 		DataDirectory:  tempDir,
 	}
 
-	reader := NewStringSegmentReader(conf)
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
+	}
+
+	defer func() {
+		if closeErr := segment.file.Close(); closeErr != nil {
+			t.Errorf("Failed to close segment file: %v", closeErr)
+		}
+	}()
 
 	var collectedQueries []string
-	err := reader.ForEach(func(queryString string) error {
+	err = reader.ForEach(func(queryString string) error {
 		collectedQueries = append(collectedQueries, queryString)
 		return nil
 	})
@@ -184,10 +202,19 @@ func TestStringSegmentReader_ForEach_EmptyDirectory(t *testing.T) {
 		DataDirectory:  tempDir,
 	}
 
-	reader := NewStringSegmentReader(conf)
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
+	}
+
+	defer func() {
+		if closeErr := segment.file.Close(); closeErr != nil {
+			t.Errorf("Failed to close segment file: %v", closeErr)
+		}
+	}()
 
 	var callCount int
-	err := reader.ForEach(func(queryString string) error {
+	err = reader.ForEach(func(queryString string) error {
 		callCount++
 		return nil
 	})
@@ -231,7 +258,16 @@ func TestStringSegmentReader_ForEach_CallbackError(t *testing.T) {
 		DataDirectory:  tempDir,
 	}
 
-	reader := NewStringSegmentReader(conf)
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
+	}
+
+	defer func() {
+		if closeErr := segment.file.Close(); closeErr != nil {
+			t.Errorf("Failed to close segment file: %v", closeErr)
+		}
+	}()
 
 	expectedError := errors.New("callback error")
 	err = reader.ForEach(func(queryString string) error {
@@ -402,6 +438,154 @@ func TestFindLastSegmentPath_EmptyDirectory(t *testing.T) {
 	actualFilename := filepath.Base(lastPath)
 	if actualFilename != expectedFilename {
 		t.Errorf("Expected default segment to be %s, got %s", expectedFilename, actualFilename)
+	}
+}
+
+// TestNewStringSegmentReader_SegmentProperties тестирует корректность свойств возвращаемого сегмента
+// Проверяет что сегмент имеет корректные значения полей после создания
+func TestNewStringSegmentReader_SegmentProperties(t *testing.T) {
+	tempDir := createTmpDir(t)
+	defer cleanupDir(t, tempDir)
+
+	conf := &config.WalConfig{
+		MaxSegmentSize: "2KB",
+		DataDirectory:  tempDir,
+	}
+
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
+	}
+
+	defer func() {
+		if segment != nil && segment.file != nil {
+			if closeErr := segment.file.Close(); closeErr != nil {
+				t.Errorf("Failed to close segment file: %v", closeErr)
+			}
+		}
+	}()
+
+	// Проверяем, что reader создался
+	if reader == nil {
+		t.Fatal("Expected reader to be non-nil")
+	}
+
+	// Проверяем свойства сегмента
+	if segment == nil {
+		t.Fatal("Expected segment to be non-nil")
+	}
+
+	if segment.maxSegmentSize != 2048 {
+		t.Errorf("Expected max segment size to be 2048, got %d", segment.maxSegmentSize)
+	}
+
+	if segment.file == nil {
+		t.Error("Expected segment file to be non-nil")
+	}
+
+	if segment.segmentNum < 0 {
+		t.Errorf("Expected segment number to be non-negative, got %d", segment.segmentNum)
+	}
+
+	if segment.size < 0 {
+		t.Errorf("Expected segment size to be non-negative, got %d", segment.size)
+	}
+}
+
+// TestNewStringSegmentReader_WithExistingFile тестирует создание reader с существующим файлом сегмента
+// Проверяет корректность чтения размера существующего файла
+func TestNewStringSegmentReader_WithExistingFile(t *testing.T) {
+	tempDir := createTmpDir(t)
+	defer cleanupDir(t, tempDir)
+
+	// Создаем файл с данными
+	segmentPath := filepath.Join(tempDir, "0")
+	file, err := os.Create(segmentPath)
+	if err != nil {
+		t.Fatalf("Failed to create segment file: %v", err)
+	}
+
+	testContent := "SET key1 value1\nSET key2 value2\n"
+	_, err = file.WriteString(testContent)
+	if err != nil {
+		_ = file.Close()
+		t.Fatalf("Failed to write to segment file: %v", err)
+	}
+	_ = file.Close()
+
+	conf := &config.WalConfig{
+		MaxSegmentSize: "1KB",
+		DataDirectory:  tempDir,
+	}
+
+	reader, segment, err := NewStringSegmentReader(conf)
+	if err != nil {
+		t.Fatalf("NewStringSegmentReader() error = %v", err)
+	}
+
+	defer func() {
+		if segment != nil && segment.file != nil {
+			if closeErr := segment.file.Close(); closeErr != nil {
+				t.Errorf("Failed to close segment file: %v", closeErr)
+			}
+		}
+	}()
+
+	// Проверяем, что размер сегмента соответствует размеру существующего файла
+	expectedSize := int64(len(testContent))
+	if segment.size != expectedSize {
+		t.Errorf("Expected segment size to be %d, got %d", expectedSize, segment.size)
+	}
+
+	// Проверяем, что данные можно прочитать
+	var collectedQueries []string
+	err = reader.ForEach(func(queryString string) error {
+		collectedQueries = append(collectedQueries, queryString)
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("ForEach() error = %v", err)
+	}
+
+	expectedQueries := []string{"SET key1 value1", "SET key2 value2"}
+	if len(collectedQueries) != len(expectedQueries) {
+		t.Fatalf("Expected %d queries, got %d", len(expectedQueries), len(collectedQueries))
+	}
+
+	for i, expected := range expectedQueries {
+		if collectedQueries[i] != expected {
+			t.Errorf("Expected query at index %d to be '%s', got '%s'", i, expected, collectedQueries[i])
+		}
+	}
+}
+
+// TestNewStringSegmentReader_InvalidDirectory тестирует обработку ошибок при некорректной директории
+// Проверяет корректность возврата ошибок при проблемах с директорией
+func TestNewStringSegmentReader_InvalidDirectory(t *testing.T) {
+	// Используем несуществующий путь в системе, который заведомо недоступен
+	invalidPath := "/invalid/readonly/path"
+
+	conf := &config.WalConfig{
+		MaxSegmentSize: "1KB",
+		DataDirectory:  invalidPath,
+	}
+
+	reader, segment, err := NewStringSegmentReader(conf)
+
+	// Ожидаем ошибку
+	if err == nil {
+		// Если ошибки нет, закрываем ресурсы
+		if segment != nil && segment.file != nil {
+			_ = segment.file.Close()
+		}
+		t.Fatal("Expected NewStringSegmentReader() to return error for invalid directory")
+	}
+
+	// При ошибке reader и segment должны быть nil или в безопасном состоянии
+	if reader != nil && segment != nil && segment.file != nil {
+		// Если все же что-то создалось, закрываем
+		_ = segment.file.Close()
 	}
 }
 

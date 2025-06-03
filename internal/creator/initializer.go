@@ -22,9 +22,7 @@ func NewCreator(logger *zap.Logger, conf *config.AppConfig) *Creator {
 }
 
 func (i *Creator) CreateWal() (wal.Wal, error) {
-	walReader := wal.NewStringSegmentReader(i.conf.WalConfig)
-
-	lastSegment, err := walReader.Open()
+	walReader, lastSegment, err := wal.NewStringSegmentReader(i.conf.WalConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +32,7 @@ func (i *Creator) CreateWal() (wal.Wal, error) {
 		return nil, err
 	}
 
-	walInstance, err := wal.NewSegmentedFSWal(i.conf.WalConfig, i.logger, walReader, walWriter)
+	walInstance, err := wal.NewSegmentedFSWal(i.conf.WalConfig, i.logger, lastSegment, walReader, walWriter)
 	if err != nil {
 		return nil, err
 	}

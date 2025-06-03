@@ -12,7 +12,6 @@ import (
 )
 
 type SegmentReader interface {
-	Open() (*Segment, error)
 	ForEach(func(string) error) error
 }
 
@@ -20,17 +19,21 @@ type StringSegmentReader struct {
 	conf *config.WalConfig
 }
 
-func NewStringSegmentReader(conf *config.WalConfig) *StringSegmentReader {
-	return &StringSegmentReader{conf: conf}
+func NewStringSegmentReader(conf *config.WalConfig) (*StringSegmentReader, *Segment, error) {
+	segment, err := openSegment(conf)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &StringSegmentReader{conf: conf}, segment, nil
 }
 
-func (r *StringSegmentReader) Open() (*Segment, error) {
-	err := createDirIfNotExists(r.conf.DataDirectory)
+func openSegment(conf *config.WalConfig) (*Segment, error) {
+	err := createDirIfNotExists(conf.DataDirectory)
 	if err != nil {
 		return nil, err
 	}
 
-	lastSegmentPath, err := findLastSegmentPath(r.conf.DataDirectory)
+	lastSegmentPath, err := findLastSegmentPath(conf.DataDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +64,7 @@ func (r *StringSegmentReader) Open() (*Segment, error) {
 		segmentNum:     segmentNum,
 		file:           segmentFile,
 		size:           segmentSize,
-		maxSegmentSize: r.conf.GetMaxSegmentSize(),
+		maxSegmentSize: conf.GetMaxSegmentSize(),
 	}, nil
 }
 
