@@ -4,7 +4,7 @@ BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 GO_LDFLAGS ?= -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)
 # Путь к конфигу
 CONFIG_PATH ?= $(shell pwd)/config/config.yaml
-TEST_CONFIG_PATH ?= $(shell pwd)/config/config-test.yaml
+TEST_CONFIG_PATH ?= $(shell pwd)/config/config-master-test.yaml
 
 .PHONY: all build clean test run lint vendor help
 

@@ -23,7 +23,7 @@ type AppConfig struct {
 	NetworkConfig     *NetworkConfig     `yaml:"network"`
 	LoggingConfig     *LoggingConfig     `yaml:"logging"`
 	WalConfig         *WalConfig         `yaml:"wal"`
-	ReplicationConfig *ReplicationConfig `yaml:"wal"`
+	ReplicationConfig *ReplicationConfig `yaml:"replication"`
 }
 
 type EngineConfig struct {
