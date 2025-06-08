@@ -294,12 +294,17 @@ func TestReadResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаем mock соединение с помощью pipe
 			server, client := net.Pipe()
-			defer client.Close()
+			defer func() {
+				require.NoError(t, client.Close())
+			}()
 
 			// Отправляем данные от "сервера" в отдельной горутине
 			go func() {
-				defer server.Close()
-				server.Write([]byte(tt.serverData))
+				defer func() {
+					require.NoError(t, server.Close())
+				}()
+				_, err := server.Write([]byte(tt.serverData))
+				require.NoError(t, err)
 			}()
 
 			// Читаем ответ
@@ -361,14 +366,14 @@ func TestNetworkConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := &config.NetworkConfig{
+			conf := &config.NetworkConfig{
 				Address:        "127.0.0.1:0",
 				MaxConnections: 10,
 				MaxMessageSize: tt.maxMsgSize,
 				IdleTimeout:    5 * time.Minute,
 			}
 
-			server, err := network.NewTCPServer(logger, config, mockRequestHandler)
+			server, err := network.NewTCPServer(logger, conf, mockRequestHandler)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -385,11 +390,16 @@ func TestLargeDataHandling(t *testing.T) {
 	// Тест для больших объемов данных
 	largeData := strings.Repeat("A", 2048)
 	server, client := net.Pipe()
-	defer client.Close()
+	defer func() {
+		require.NoError(t, client.Close())
+	}()
 
 	go func() {
-		defer server.Close()
-		server.Write([]byte(largeData))
+		defer func() {
+			require.NoError(t, server.Close())
+		}()
+		_, err := server.Write([]byte(largeData))
+		require.NoError(t, err)
 	}()
 
 	response, err := readResponseFromConnection(client)
@@ -403,14 +413,15 @@ func TestConnectionErrorHandling(t *testing.T) {
 	server, client := net.Pipe()
 
 	// Закрываем сервер сразу чтобы вызвать EOF
-	server.Close()
+	require.NoError(t, server.Close())
 
 	response, err := readResponseFromConnection(client)
 	// При закрытии соединения должен вернуться EOF, который обрабатывается как успешный случай
 	// но без данных
 	assert.NoError(t, err)
 	assert.Empty(t, response)
-	client.Close()
+
+	require.NoError(t, client.Close())
 }
 
 func TestBoundaryConditions(t *testing.T) {
@@ -437,11 +448,16 @@ func TestBoundaryConditions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			data := bytes.Repeat([]byte("X"), tt.dataSize)
 			server, client := net.Pipe()
-			defer client.Close()
+			defer func() {
+				require.NoError(t, client.Close())
+			}()
 
 			go func() {
-				defer server.Close()
-				server.Write(data)
+				defer func() {
+					require.NoError(t, server.Close())
+				}()
+				_, err := server.Write(data)
+				require.NoError(t, err)
 			}()
 
 			response, err := readResponseFromConnection(client)

@@ -10,6 +10,7 @@ import (
 	"concurrency_hw/internal/database/storage/wal"
 	"context"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +20,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// isConnectionClosed проверяет, является ли ошибка результатом закрытого соединения
+func isConnectionClosed(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "use of closed network connection")
+}
 
 // MockWAL - заглушка для интерфейса WAL
 type MockWAL struct {
@@ -163,7 +169,7 @@ func TestReplicatorIntegration(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	masterAddress := listener.Addr().String()
-	listener.Close()
+	require.NoError(t, listener.Close())
 
 	// Обновляем конфигурацию с реальным адресом
 	masterConfig.ReplicationConfig.MasterAddress = masterAddress
@@ -193,7 +199,11 @@ func TestReplicatorIntegration(t *testing.T) {
 		// Создаем TCP клиент для slave
 		slaveClient, err := network.NewTCPClient(masterAddress)
 		require.NoError(t, err)
-		defer slaveClient.Disconnect()
+		defer func() {
+			if err := slaveClient.Disconnect(); err != nil && !isConnectionClosed(err) {
+				require.NoError(t, err)
+			}
+		}()
 
 		// Создаем WAL для slave
 		slaveWAL := NewMockWAL()
@@ -225,7 +235,11 @@ func TestReplicatorIntegration(t *testing.T) {
 		// Создаем TCP клиент для slave
 		slaveClient, err := network.NewTCPClient(masterAddress)
 		require.NoError(t, err)
-		defer slaveClient.Disconnect()
+		defer func() {
+			if err := slaveClient.Disconnect(); err != nil && !isConnectionClosed(err) {
+				require.NoError(t, err)
+			}
+		}()
 
 		// Создаем WAL для slave с уже имеющимися данными
 		slaveWAL := NewMockWAL()
@@ -255,7 +269,11 @@ func TestReplicatorIntegration(t *testing.T) {
 		// Создаем TCP клиент для slave
 		slaveClient, err := network.NewTCPClient(masterAddress)
 		require.NoError(t, err)
-		defer slaveClient.Disconnect()
+		defer func() {
+			if err := slaveClient.Disconnect(); err != nil && !isConnectionClosed(err) {
+				require.NoError(t, err)
+			}
+		}()
 
 		// Создаем WAL для slave который полностью синхронизирован
 		slaveWAL := NewMockWAL()
@@ -296,7 +314,13 @@ func TestReplicatorIntegration(t *testing.T) {
 					mu.Unlock()
 					return
 				}
-				defer slaveClient.Disconnect()
+				defer func() {
+					if err := slaveClient.Disconnect(); err != nil && !isConnectionClosed(err) {
+						mu.Lock()
+						clientErrors = append(clientErrors, err)
+						mu.Unlock()
+					}
+				}()
 
 				// Создаем WAL для slave
 				slaveWAL := NewMockWAL()
@@ -316,7 +340,11 @@ func TestReplicatorIntegration(t *testing.T) {
 				}
 				mu.Unlock()
 
-				slaveReplicator.Close()
+				if err := slaveReplicator.Close(); err != nil {
+					mu.Lock()
+					clientErrors = append(clientErrors, err)
+					mu.Unlock()
+				}
 			}(i)
 		}
 
@@ -386,11 +414,11 @@ func TestTCPSlaveReplicator_UnitTests(t *testing.T) {
 		mockClient := &network.TCPClient{} // Поскольку поле приватное, создаем пустую структуру
 		mockWAL := NewMockWAL()
 
-		// Создаем replicator
-		replicator := replicator.NewTCPSlaveReplicator(mockClient, mockWAL)
+		// Создаем rep
+		rep := replicator.NewTCPSlaveReplicator(mockClient, mockWAL)
 
-		// Проверяем, что replicator создался
-		assert.NotNil(t, replicator)
+		// Проверяем, что rep создался
+		assert.NotNil(t, rep)
 	})
 
 	t.Run("GetWalStatus from mock WAL", func(t *testing.T) {
