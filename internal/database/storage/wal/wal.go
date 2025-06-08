@@ -17,15 +17,23 @@ var WalCommands = map[compute.CommandId]bool{
 	compute.DelCommandId: true,
 }
 
+type WalStatus struct {
+	SegmentNum  int
+	SegmentLine int
+}
+
 type Wal interface {
 	ForEach(func(string) error) error
 	Append(string) error
+	GetUpdates(status *WalStatus) ([]string, error)
+	GetWalStatus() *WalStatus
 	Close() error
 }
 
 type Segment struct {
 	segmentNum     int
 	file           *os.File
+	length         int
 	size           int64
 	maxSegmentSize int64
 }
@@ -100,6 +108,21 @@ func (s *SegmentedFSWal) Append(queryString string) error {
 	}
 
 	return nil
+}
+
+func (s *SegmentedFSWal) GetUpdates(status *WalStatus) ([]string, error) {
+	if s.segment.segmentNum < status.SegmentNum || s.segment.length > status.SegmentLine {
+		return s.reader.ReadFrom(status.SegmentNum, status.SegmentLine)
+	}
+
+	return nil, nil
+}
+
+func (s *SegmentedFSWal) GetWalStatus() *WalStatus {
+	return &WalStatus{
+		SegmentNum:  s.segment.segmentNum,
+		SegmentLine: s.segment.length,
+	}
 }
 
 func (s *SegmentedFSWal) Close() error {

@@ -43,6 +43,7 @@ func (w *StringSegmentWriter) Write(buff []string) error {
 			// Если в сегменте есть место под текущий запрос - пишем на диск
 			idx = i + 1
 			w.segment.size += querySize
+			w.segment.length++
 
 			_, err := writer.WriteString(query + "\n")
 			if err != nil {
@@ -104,6 +105,7 @@ func (w *StringSegmentWriter) createNewSegment() error {
 
 	w.segment.segmentNum += 1
 	w.segment.size = 0
+	w.segment.length = 0
 	w.segment.file = segmentFile
 
 	return nil

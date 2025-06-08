@@ -48,7 +48,7 @@ func main() {
 			return
 		}
 
-		response, err := client.Execute(queryString)
+		response, err := client.Execute([]byte(queryString))
 		if err != nil {
 			logger.Error("cannot execute query",
 				zap.String("query", queryString),
