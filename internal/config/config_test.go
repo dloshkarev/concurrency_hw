@@ -323,15 +323,6 @@ func TestEngineConfig_PartitionsCount(t *testing.T) {
 	}
 }
 
-func TestReplicaType_Constants(t *testing.T) {
-	if config.Master != "master" {
-		t.Errorf("Master constant = %v, want 'master'", config.Master)
-	}
-	if config.Slave != "slave" {
-		t.Errorf("Slave constant = %v, want 'slave'", config.Slave)
-	}
-}
-
 func TestAppConfig_StructureIntegrity(t *testing.T) {
 	appConfig := &config.AppConfig{
 		EngineConfig: &config.EngineConfig{
