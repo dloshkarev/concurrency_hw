@@ -6,7 +6,9 @@ import (
 	"concurrency_hw/internal/database/compute"
 	"concurrency_hw/internal/database/network"
 	"concurrency_hw/internal/database/network/replicator"
+	"concurrency_hw/internal/database/storage/engine"
 	"concurrency_hw/internal/database/storage/engine/mem"
+	"concurrency_hw/internal/database/storage/engine/partition"
 	"concurrency_hw/internal/database/storage/wal"
 	"go.uber.org/zap"
 )
@@ -52,7 +54,16 @@ func (c *Creator) CreateDatabase(
 		c.logger.Fatal("Failed to create query parser", zap.Error(err))
 	}
 
-	engine := mem.NewInMemoryEngine(c.conf.EngineConfig.StartSize)
+	var eng engine.Engine
+	if c.conf.EngineConfig.PartitionsCount > 0 {
+		partitions := make([]engine.Engine, 0, c.conf.EngineConfig.PartitionsCount)
+		for i := 0; i < c.conf.EngineConfig.PartitionsCount; i++ {
+			partitions[i] = mem.NewInMemoryEngine(c.conf.EngineConfig.StartSize)
+		}
+		eng = partition.NewPartitionedEngine(partitions)
+	} else {
+		eng = mem.NewInMemoryEngine(c.conf.EngineConfig.StartSize)
+	}
 
 	var replicatorClient replicator.SlaveReplicator = nil
 	if conf.ReplicaType == config.Slave {
@@ -64,7 +75,7 @@ func (c *Creator) CreateDatabase(
 		replicatorClient = replicator.NewTCPSlaveReplicator(replicationTcpClient, walInstance)
 	}
 
-	return database.NewDatabase(logger, parser, engine, walInstance, conf, replicatorClient)
+	return database.NewDatabase(logger, parser, eng, walInstance, conf, replicatorClient)
 }
 
 func (c *Creator) CreateMasterReplicatorServer(

@@ -27,8 +27,9 @@ type AppConfig struct {
 }
 
 type EngineConfig struct {
-	Type      string `yaml:"type" env-default:"in_memory"`
-	StartSize int    `yaml:"start_size" env-default:"1000"`
+	Type            string `yaml:"type" env-default:"in_memory"`
+	StartSize       int    `yaml:"start_size" env-default:"1000"`
+	PartitionsCount int    `yaml:"partitions_count" env-default:"5"`
 }
 
 type NetworkConfig struct {
