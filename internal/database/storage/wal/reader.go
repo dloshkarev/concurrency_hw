@@ -13,6 +13,7 @@ import (
 
 type SegmentReader interface {
 	ForEach(func(string) error) error
+	ReadFrom(segmentNum int, segmentLine int) ([]string, error)
 }
 
 type StringSegmentReader struct {
@@ -59,11 +60,16 @@ func openSegment(conf *config.WalConfig) (*Segment, error) {
 	}
 
 	segmentSize := fileStat.Size()
+	linesCount, err := countLines(segmentFile)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Segment{
 		segmentNum:     segmentNum,
 		file:           segmentFile,
 		size:           segmentSize,
+		length:         linesCount,
 		maxSegmentSize: conf.GetMaxSegmentSize(),
 	}, nil
 }
@@ -75,24 +81,80 @@ func (r *StringSegmentReader) ForEach(f func(string) error) error {
 	}
 
 	for _, segmentPath := range segmentPaths {
-		file, err := os.Open(segmentPath)
+		err := r.ForEachInSegment(segmentPath, f)
 		if err != nil {
 			return err
 		}
+	}
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			queryString := scanner.Text()
-			err = f(queryString)
+	return nil
+}
+
+func (r *StringSegmentReader) ReadFrom(segmentNum int, segmentLine int) ([]string, error) {
+	filenames, err := findSortedSegments(r.conf.DataDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	queries := make([]string, 0)
+
+	for _, segmentFile := range filenames {
+		currentSegmentNum, err := getSegmentNum(segmentFile)
+		if err != nil {
+			return nil, err
+		}
+
+		if currentSegmentNum >= segmentNum {
+			var line = 1
+			err := r.ForEachInSegment(segmentFile, func(query string) error {
+				if line > segmentLine {
+					queries = append(queries, segmentFile)
+				}
+				line++
+				return nil
+			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
+	}
 
-		err = file.Close()
+	return queries, nil
+}
+
+func countLines(file *os.File) (int, error) {
+	scanner := bufio.NewScanner(file)
+	lineCount := 0
+
+	for scanner.Scan() {
+		lineCount++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return 0, err
+	}
+
+	return lineCount, nil
+}
+
+func (r *StringSegmentReader) ForEachInSegment(segmentPath string, f func(string) error) error {
+	file, err := os.Open(segmentPath)
+	if err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		queryString := scanner.Text()
+		err = f(queryString)
 		if err != nil {
 			return err
 		}
+	}
+
+	err = file.Close()
+	if err != nil {
+		return err
 	}
 
 	return nil

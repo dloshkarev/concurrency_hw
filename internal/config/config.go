@@ -11,11 +11,19 @@ import (
 	"time"
 )
 
+const (
+	Master = ReplicaType("master")
+	Slave  = ReplicaType("slave")
+)
+
+type ReplicaType string
+
 type AppConfig struct {
-	EngineConfig  *EngineConfig  `yaml:"engine"`
-	NetworkConfig *NetworkConfig `yaml:"network"`
-	LoggingConfig *LoggingConfig `yaml:"logging"`
-	WalConfig     *WalConfig     `yaml:"wal"`
+	EngineConfig      *EngineConfig      `yaml:"engine"`
+	NetworkConfig     *NetworkConfig     `yaml:"network"`
+	LoggingConfig     *LoggingConfig     `yaml:"logging"`
+	WalConfig         *WalConfig         `yaml:"wal"`
+	ReplicationConfig *ReplicationConfig `yaml:"wal"`
 }
 
 type EngineConfig struct {
@@ -41,6 +49,18 @@ type WalConfig struct {
 	MaxSegmentSize        string        `yaml:"max_segment_size" env-default:"1KB"`
 	DataDirectory         string        `yaml:"data_directory" env-default:"/data"`
 	maxSegmentSizeInBytes int64
+}
+
+type ReplicationConfig struct {
+	ReplicaType   ReplicaType   `yaml:"replica_type" env-default:"master"`
+	MasterAddress string        `yaml:"master_address" env-default:"127.0.0.1:3223"`
+	SyncInterval  time.Duration `yaml:"sync_interval" env-default:"1s"`
+}
+
+func (c *AppConfig) ReplicatorNetworkConfig() *NetworkConfig {
+	replicatorNetConfig := *c.NetworkConfig
+	replicatorNetConfig.Address = c.ReplicationConfig.MasterAddress
+	return &replicatorNetConfig
 }
 
 func (c *WalConfig) GetMaxSegmentSize() int64 {

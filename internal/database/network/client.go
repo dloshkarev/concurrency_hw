@@ -25,10 +25,10 @@ func NewTCPClient(address string) (*TCPClient, error) {
 	}, nil
 }
 
-func (c *TCPClient) Execute(queryString string) ([]byte, error) {
-	_, err := c.conn.Write([]byte(queryString))
+func (c *TCPClient) Execute(request []byte) ([]byte, error) {
+	_, err := c.conn.Write(request)
 	if err != nil {
-		return nil, fmt.Errorf("cannot send query to server: %w", err)
+		return nil, fmt.Errorf("cannot send request to server: %w", err)
 	}
 
 	return readResponse(c.conn)

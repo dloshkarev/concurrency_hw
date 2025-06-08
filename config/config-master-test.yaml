@@ -8,9 +8,12 @@ network:
   idle_timeout: 5m
 logging:
   level: "info"
-  output: "/tmp/output.wal"
+  output: "/tmp/master-output.log"
 wal:
   flushing_batch_size: 1
   flushing_batch_timeout: "10ms"
   max_segment_size: "1KB"
-  data_directory: "/tmp/data-test"
+  data_directory: "/tmp/master-data-test"
+replication:
+  replica_type: "master"
+  master_address: "127.0.0.1:13223"

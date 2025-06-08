@@ -29,24 +29,42 @@ func main() {
 
 	initializer := creator.NewCreator(logger, conf)
 
-	db, err := initializer.CreateDatabase()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	walInstance, err := initializer.CreateWal()
+	if err != nil {
+		logger.Fatal("Failed to create wal", zap.Error(err))
+	}
+
+	db, err := initializer.CreateDatabase(logger, conf.ReplicationConfig, walInstance)
 	if err != nil {
 		logger.Fatal("Failed to initialize database", zap.Error(err))
 	}
 
-	server, err := network.NewTCPServer(logger, conf.NetworkConfig, db.Execute)
+	dbServer, err := initializer.CreateTCPServer(logger, conf.NetworkConfig, db.Execute)
 	if err != nil {
-		logger.Fatal("Failed to create server", zap.Error(err))
+		logger.Fatal("Failed to create db server", zap.Error(err))
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	if conf.ReplicationConfig.ReplicaType == config.Master {
+		masterReplicatorServer, err := initializer.CreateMasterReplicatorServer(logger, conf, walInstance)
+		if err != nil {
+			logger.Fatal("Failed to create db replicator server", zap.Error(err))
+		}
+
+		runServer(ctx, logger, masterReplicatorServer)
+	}
+
+	runServer(ctx, logger, dbServer)
+	shutdown(logger, db, cancel)
+}
+
+func runServer(ctx context.Context, logger *zap.Logger, tcpServer *network.TCPServer) {
 	go func() {
-		if err := server.Run(ctx); err != nil {
+		if err := tcpServer.Run(ctx); err != nil {
 			logger.Fatal("Failed to start server", zap.Error(err))
 		}
 	}()
-
-	shutdown(logger, db, cancel)
 }
 
 func createLogger(conf *config.LoggingConfig) *zap.Logger {

@@ -11,7 +11,7 @@ import (
 type TCPServer struct {
 	logger           *zap.Logger
 	conf             *config.NetworkConfig
-	requestHandler   func(string) (string, error)
+	requestHandler   func([]byte) ([]byte, error)
 	connections      int
 	requestBytesSize int64
 }
@@ -19,7 +19,7 @@ type TCPServer struct {
 func NewTCPServer(
 	logger *zap.Logger,
 	conf *config.NetworkConfig,
-	requestHandler func(string) (string, error),
+	requestHandler func([]byte) ([]byte, error),
 ) (*TCPServer, error) {
 	requestBytesSize, err := config.ParseSizeInBytes(conf.MaxMessageSize)
 	if err != nil {
@@ -100,18 +100,18 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 				return
 			}
 
-			command := string(request[:count])
+			command := request[:count]
 			response, err := s.requestHandler(command)
 
 			if err != nil {
 				s.logger.Error("failed to handle request",
-					zap.String("request", command),
-					zap.String("response", response),
+					zap.ByteString("request", command),
+					zap.ByteString("response", response),
 					zap.Error(err),
 				)
 			}
 
-			s.response(conn, []byte(response))
+			s.response(conn, response)
 		}
 	}
 }
