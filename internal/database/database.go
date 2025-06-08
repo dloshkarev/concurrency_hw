@@ -8,8 +8,9 @@ import (
 	"concurrency_hw/internal/database/storage/engine"
 	"concurrency_hw/internal/database/storage/wal"
 	"fmt"
-	"go.uber.org/zap"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type PreProcessor interface {
@@ -41,8 +42,11 @@ func NewDatabase(
 		engine:            engine,
 		wal:               wal,
 		replicationConfig: replicationConfig,
-		ticker:            time.NewTicker(replicationConfig.SyncInterval),
 		replicator:        replicator,
+	}
+
+	if replicationConfig.ReplicaType == config.Slave {
+		db.ticker = time.NewTicker(replicationConfig.SyncInterval)
 	}
 
 	err := db.Load()
@@ -150,7 +154,9 @@ func (d *Database) runMasterSync() error {
 }
 
 func (d *Database) Stop() error {
-	d.ticker.Stop()
+	if d.ticker != nil {
+		d.ticker.Stop()
+	}
 
 	err := d.wal.Close()
 	if err != nil {

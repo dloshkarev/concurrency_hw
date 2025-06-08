@@ -49,7 +49,7 @@ func openSegment(conf *config.WalConfig) (*Segment, error) {
 		return nil, err
 	}
 
-	segmentFile, err := os.OpenFile(lastSegmentPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	segmentFile, err := os.OpenFile(lastSegmentPath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}

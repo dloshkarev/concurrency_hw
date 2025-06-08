@@ -10,6 +10,7 @@ import (
 	"concurrency_hw/internal/database/storage/engine/mem"
 	"concurrency_hw/internal/database/storage/engine/partition"
 	"concurrency_hw/internal/database/storage/wal"
+
 	"go.uber.org/zap"
 )
 
@@ -56,7 +57,7 @@ func (c *Creator) CreateDatabase(
 
 	var eng engine.Engine
 	if c.conf.EngineConfig.PartitionsCount > 0 {
-		partitions := make([]engine.Engine, 0, c.conf.EngineConfig.PartitionsCount)
+		partitions := make([]engine.Engine, c.conf.EngineConfig.PartitionsCount)
 		for i := 0; i < c.conf.EngineConfig.PartitionsCount; i++ {
 			partitions[i] = mem.NewInMemoryEngine(c.conf.EngineConfig.StartSize)
 		}

@@ -18,3 +18,4 @@ wal:
 replication:
   replica_type: "master"
   master_address: "127.0.0.1:13223"
+  sync_interval: "1s"

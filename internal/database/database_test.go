@@ -7,11 +7,12 @@ import (
 	"concurrency_hw/internal/creator"
 	"concurrency_hw/internal/database/network"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.uber.org/zap"
 )
@@ -26,14 +27,7 @@ func TestDatabase_Execute(t *testing.T) {
 	require.NoError(t, err)
 
 	db, err := initializer.CreateDatabase(logger, conf.ReplicationConfig, walInstance)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tmpWal, err := initializer.CreateWal()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name        string
@@ -124,7 +118,7 @@ func TestDatabase_Execute(t *testing.T) {
 		var idx int
 
 		// Проверяем, что в WAL сохранены все запросы
-		_ = tmpWal.ForEach(func(queryString string) error {
+		_ = walInstance.ForEach(func(queryString string) error {
 			assert.Equal(t, expected[idx], queryString)
 			idx++
 			return nil
@@ -146,15 +140,15 @@ func TestDatabase_Execute(t *testing.T) {
 
 		res, err := db2.Execute([]byte("GET key1"))
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf(network.GetResult, "value1"), res)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, "value1"), string(res))
 
 		res, err = db2.Execute([]byte("GET key2"))
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf(network.GetResult, "value2"), res)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, "value2"), string(res))
 
 		res, err = db2.Execute([]byte("GET key3"))
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), res)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), string(res))
 
 		err = db2.Stop()
 		if err != nil {
@@ -182,17 +176,21 @@ func TestDatabase_Execute(t *testing.T) {
 		// Проверяем что ключа нет
 		res, err := db2.Execute([]byte("GET key1"))
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), res)
+		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), string(res))
 
 		res, err = db2.Execute([]byte("SET key1 value1"))
 		require.NoError(t, err)
-		assert.Equal(t, network.SuccessCommand, res)
+		assert.Equal(t, network.SuccessCommand, string(res))
 
 		// Останавливаем БД - WAL должен записаться на диск
 		err = db2.Stop()
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		// Создаем новый WAL чтобы проверить что записалось на диск
+		tmpWal, err := initializer.CreateWal()
+		require.NoError(t, err)
 
 		// Проверяем, что в WAL сохранены все запросы
 		_ = tmpWal.ForEach(func(queryString string) error {
