@@ -25,49 +25,49 @@ func TestTCPServer(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	cli := getClient(address)
 
-	response, err := cli.Execute("GET q")
+	response, err := cli.Execute([]byte("GET q"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(network.GetResult, ""), string(response))
 
-	response, err = cli.Execute("SET q 1")
+	response, err = cli.Execute([]byte("SET q 1"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, network.SuccessCommand, string(response))
 
-	response, err = cli.Execute("SET w 2")
+	response, err = cli.Execute([]byte("SET w 2"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, network.SuccessCommand, string(response))
 
-	response, err = cli.Execute("GET q")
+	response, err = cli.Execute([]byte("GET q"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(network.GetResult, "1"), string(response))
 
-	response, err = cli.Execute("GET w")
+	response, err = cli.Execute([]byte("GET w"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(network.GetResult, "2"), string(response))
 
-	response, err = cli.Execute("DEL w")
+	response, err = cli.Execute([]byte("DEL w"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, network.SuccessCommand, string(response))
 
-	response, err = cli.Execute("GET q")
+	response, err = cli.Execute([]byte("GET q"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(network.GetResult, "1"), string(response))
 
-	response, err = cli.Execute("GET w")
+	response, err = cli.Execute([]byte("GET w"))
 	fmt.Println(string(response))
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(network.GetResult, ""), string(response))
 
 	// Проверка WAL
 	for range 1000 {
-		_, err := cli.Execute(fmt.Sprintf("SET wal %v", longValue))
+		_, err := cli.Execute([]byte(fmt.Sprintf("SET wal %v", longValue)))
 		require.NoError(t, err)
 	}
 

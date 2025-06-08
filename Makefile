@@ -34,6 +34,11 @@ test-unit:
 	export CONDB_CONFIG_PATH=$(TEST_CONFIG_PATH) && \
 	go test -race -tags=unit -v ./...
 
+## test: Запустить интеграционные тесты
+test-integration:
+	export CONDB_CONFIG_PATH=$(TEST_CONFIG_PATH) && \
+	go test -race -tags=integration -v ./...
+
 ## test-e2e: Запустить e2e-тест
 test-e2e:
 	export CONDB_CONFIG_PATH=$(TEST_CONFIG_PATH) && \
