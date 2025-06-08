@@ -22,7 +22,10 @@ func TestDatabase_Execute(t *testing.T) {
 
 	initializer := creator.NewCreator(logger, conf)
 
-	db, err := initializer.CreateDatabase()
+	walInstance, err := initializer.CreateWal()
+	require.NoError(t, err)
+
+	db, err := initializer.CreateDatabase(logger, conf.ReplicationConfig, walInstance)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +53,7 @@ func TestDatabase_Execute(t *testing.T) {
 			query: "GET key2",
 			want:  "[success] value2",
 			setupFunc: func() {
-				_, _ = db.Execute("SET key2 value2")
+				_, _ = db.Execute([]byte("SET key2 value2"))
 			},
 		},
 		{
@@ -58,7 +61,7 @@ func TestDatabase_Execute(t *testing.T) {
 			query: "DEL key3",
 			want:  network.SuccessCommand,
 			setupFunc: func() {
-				_, _ = db.Execute("SET key3 value3")
+				_, _ = db.Execute([]byte("SET key3 value3"))
 			},
 		},
 		{
@@ -93,14 +96,14 @@ func TestDatabase_Execute(t *testing.T) {
 				tt.setupFunc()
 			}
 
-			got, err := db.Execute(tt.query)
+			got, err := db.Execute([]byte(tt.query))
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Database.Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if got != tt.want {
+			if string(got) != tt.want {
 				t.Errorf("Database.Execute() = %v, want %v", got, tt.want)
 			}
 
@@ -133,20 +136,23 @@ func TestDatabase_Execute(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		db2, err := initializer.CreateDatabase()
+		walInstance, err := initializer.CreateWal()
+		require.NoError(t, err)
+
+		db2, err := initializer.CreateDatabase(logger, conf.ReplicationConfig, walInstance)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		res, err := db2.Execute("GET key1")
+		res, err := db2.Execute([]byte("GET key1"))
 		require.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf(network.GetResult, "value1"), res)
 
-		res, err = db2.Execute("GET key2")
+		res, err = db2.Execute([]byte("GET key2"))
 		require.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf(network.GetResult, "value2"), res)
 
-		res, err = db2.Execute("GET key3")
+		res, err = db2.Execute([]byte("GET key3"))
 		require.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), res)
 
@@ -164,17 +170,21 @@ func TestDatabase_Execute(t *testing.T) {
 		conf.WalConfig.FlushingBatchTimeout = 100 * time.Minute
 
 		initializer2 := creator.NewCreator(logger, conf)
-		db2, err := initializer2.CreateDatabase()
+
+		walInstance, err := initializer2.CreateWal()
+		require.NoError(t, err)
+
+		db2, err := initializer2.CreateDatabase(logger, conf.ReplicationConfig, walInstance)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Проверяем что ключа нет
-		res, err := db2.Execute("GET key1")
+		res, err := db2.Execute([]byte("GET key1"))
 		require.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf(network.GetResult, ""), res)
 
-		res, err = db2.Execute("SET key1 value1")
+		res, err = db2.Execute([]byte("SET key1 value1"))
 		require.NoError(t, err)
 		assert.Equal(t, network.SuccessCommand, res)
 
