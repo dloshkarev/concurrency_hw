@@ -8,11 +8,14 @@ network:
   max_message_size: "4KB"
   idle_timeout: 5m
 logging:
-  level: "info"
+  level: "debug"
   output: "/tmp/slave-output.log"
 wal:
+  flushing_batch_size: 1
+  flushing_batch_timeout: "10ms"
+  max_segment_size: "1KB"
   data_directory: "/tmp/slave-data-test"
 replication:
   replica_type: "slave"
-  master_address: "127.0.0.1:3223"
+  master_address: "127.0.0.1:13223"
   sync_interval: "1s"

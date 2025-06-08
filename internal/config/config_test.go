@@ -198,7 +198,7 @@ func TestAppConfig_ReplicatorNetworkConfig(t *testing.T) {
 					Address:        "127.0.0.1:3223",
 					MaxConnections: 100,
 					MaxMessageSize: "4KB",
-					IdleTimeout:    5 * time.Minute,
+					IdleTimeout:    0,
 				},
 				ReplicationConfig: &config.ReplicationConfig{
 					MasterAddress: "192.168.1.10:3333",
@@ -207,7 +207,7 @@ func TestAppConfig_ReplicatorNetworkConfig(t *testing.T) {
 			wantAddress: "192.168.1.10:3333",
 			wantMaxConn: 100,
 			wantMsgSize: "4KB",
-			wantTimeout: 5 * time.Minute,
+			wantTimeout: 0,
 		},
 		{
 			name: "Different master address",
@@ -216,7 +216,7 @@ func TestAppConfig_ReplicatorNetworkConfig(t *testing.T) {
 					Address:        "localhost:8080",
 					MaxConnections: 50,
 					MaxMessageSize: "8KB",
-					IdleTimeout:    10 * time.Minute,
+					IdleTimeout:    0,
 				},
 				ReplicationConfig: &config.ReplicationConfig{
 					MasterAddress: "master.example.com:9999",
@@ -225,7 +225,7 @@ func TestAppConfig_ReplicatorNetworkConfig(t *testing.T) {
 			wantAddress: "master.example.com:9999",
 			wantMaxConn: 50,
 			wantMsgSize: "8KB",
-			wantTimeout: 10 * time.Minute,
+			wantTimeout: 0,
 		},
 	}
 

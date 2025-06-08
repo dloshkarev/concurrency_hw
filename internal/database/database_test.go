@@ -7,6 +7,7 @@ import (
 	"concurrency_hw/internal/creator"
 	"concurrency_hw/internal/database/network"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 )
 
 func TestDatabase_Execute(t *testing.T) {
+	cleanupDataDirs()
 	logger, _ := zap.NewDevelopment()
 	conf := config.Load()
 
@@ -154,11 +156,12 @@ func TestDatabase_Execute(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		_ = cleanup(conf.WalConfig.DataDirectory)
+		cleanupDataDirs()
 	})
 
 	t.Run("Check WAL closing", func(t *testing.T) {
+		cleanupDataDirs()
+
 		// Чтобы запрос сразу не попал в файл
 		conf.WalConfig.FlushingBatchSize = 100
 		conf.WalConfig.FlushingBatchTimeout = 100 * time.Minute
@@ -198,17 +201,18 @@ func TestDatabase_Execute(t *testing.T) {
 			return nil
 		})
 
-		_ = cleanup(conf.WalConfig.DataDirectory)
 	})
 }
 
-func cleanup(dir string) error {
-	// Прибираемся за собой
-	err := os.RemoveAll(dir)
-	if err != nil {
-		return err
+func cleanupDataDirs() {
+	dataDirs := []string{
+		"/tmp/master-data-test",
+		"/tmp/slave-data-test",
 	}
 
-	fmt.Println("wal files has been removed")
-	return nil
+	for _, dir := range dataDirs {
+		if err := os.RemoveAll(dir); err != nil {
+			log.Printf("Warning: failed to remove %s: %v", dir, err)
+		}
+	}
 }

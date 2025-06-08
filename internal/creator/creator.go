@@ -10,6 +10,7 @@ import (
 	"concurrency_hw/internal/database/storage/engine/mem"
 	"concurrency_hw/internal/database/storage/engine/partition"
 	"concurrency_hw/internal/database/storage/wal"
+	"concurrency_hw/internal/primitive"
 
 	"go.uber.org/zap"
 )
@@ -99,7 +100,8 @@ func (c *Creator) CreateTCPServer(
 	conf *config.NetworkConfig,
 	requestHandler func([]byte) ([]byte, error),
 ) (*network.TCPServer, error) {
-	server, err := network.NewTCPServer(logger, conf, requestHandler)
+	semaphore := primitive.NewSemaphore(conf.MaxConnections)
+	server, err := network.NewTCPServer(logger, conf, semaphore, requestHandler)
 	if err != nil {
 		return nil, err
 	}

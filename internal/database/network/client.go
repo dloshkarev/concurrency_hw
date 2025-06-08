@@ -1,17 +1,14 @@
 package network
 
 import (
+	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 )
 
-const (
-	ReadBufferSize = 1024
-)
-
 type TCPClient struct {
-	conn net.Conn
+	conn    net.Conn
+	address string
 }
 
 func NewTCPClient(address string) (*TCPClient, error) {
@@ -21,17 +18,46 @@ func NewTCPClient(address string) (*TCPClient, error) {
 	}
 
 	return &TCPClient{
-		conn: conn,
+		conn:    conn,
+		address: address,
 	}, nil
 }
 
 func (c *TCPClient) Execute(request []byte) ([]byte, error) {
-	_, err := c.conn.Write(request)
+	// Отправляем длину запроса и сам запрос
+	err := binary.Write(c.conn, binary.BigEndian, uint32(len(request)))
+	if err != nil {
+		return nil, fmt.Errorf("cannot send request length to server: %w", err)
+	}
+
+	_, err = c.conn.Write(request)
 	if err != nil {
 		return nil, fmt.Errorf("cannot send request to server: %w", err)
 	}
 
-	return readResponse(c.conn)
+	// Читаем длину ответа
+	var responseLength uint32
+	err = binary.Read(c.conn, binary.BigEndian, &responseLength)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read response length: %w", err)
+	}
+
+	// Читаем ответ фиксированной длины
+	response := make([]byte, responseLength)
+	totalRead := 0
+	for totalRead < int(responseLength) {
+		n, err := c.conn.Read(response[totalRead:])
+		if err != nil {
+			return nil, fmt.Errorf("cannot read response: %w", err)
+		}
+		totalRead += n
+	}
+
+	return response, nil
+}
+
+func (c *TCPClient) GetAddress() string {
+	return c.address
 }
 
 func (c *TCPClient) Disconnect() error {
@@ -40,24 +66,4 @@ func (c *TCPClient) Disconnect() error {
 	}
 
 	return nil
-}
-
-func readResponse(conn net.Conn) ([]byte, error) {
-	var buf []byte
-	tmp := make([]byte, ReadBufferSize)
-
-	for {
-		n, err := conn.Read(tmp)
-		if err != nil {
-			if err == io.EOF {
-				buf = append(buf, tmp[:n]...)
-				return buf, nil
-			}
-			return nil, err
-		}
-		buf = append(buf, tmp[:n]...)
-		if n < ReadBufferSize {
-			return buf, nil
-		}
-	}
 }

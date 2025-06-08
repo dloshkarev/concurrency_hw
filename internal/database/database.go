@@ -66,7 +66,7 @@ func NewDatabase(
 
 func (d *Database) Load() error {
 	err := d.wal.ForEach(func(queryString string) error {
-		_, err := d.executeWithWal(queryString, false)
+		_, err := d.executeWithWal(queryString, false, true) // true = загрузка из WAL (как реплицированная)
 		return err
 	})
 
@@ -79,12 +79,12 @@ func (d *Database) Load() error {
 
 func (d *Database) Execute(query []byte) ([]byte, error) {
 	queryString := string(query)
-	response, err := d.executeWithWal(queryString, true)
+	response, err := d.executeWithWal(queryString, true, false)
 
 	return []byte(response), err
 }
 
-func (d *Database) executeWithWal(queryString string, useWal bool) (string, error) {
+func (d *Database) executeWithWal(queryString string, useWal bool, isReplicated bool) (string, error) {
 	cleaned := d.preProcessor.CleanQuery(queryString)
 
 	query, err := d.preProcessor.ParseQuery(cleaned)
@@ -93,7 +93,7 @@ func (d *Database) executeWithWal(queryString string, useWal bool) (string, erro
 	}
 
 	if _, exists := wal.WalCommands[query.CommandId]; exists &&
-		d.replicationConfig.ReplicaType == config.Slave {
+		d.replicationConfig.ReplicaType == config.Slave && !isReplicated {
 		return fmt.Sprintf(network.CommandReplicationError, query), err
 	}
 
@@ -140,7 +140,7 @@ func (d *Database) runMasterSync() error {
 			if len(queries) > 0 {
 				d.logger.Debug("run slave replication", zap.Int("queries", len(queries)))
 				for _, queryString := range queries {
-					_, err := d.executeWithWal(queryString, true)
+					_, err := d.executeWithWal(queryString, true, true) // true = реплицированная команда
 
 					if err != nil {
 						panic(err)

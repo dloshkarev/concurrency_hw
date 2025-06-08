@@ -108,7 +108,7 @@ func (r *StringSegmentReader) ReadFrom(segmentNum int, segmentLine int) ([]strin
 			var line = 1
 			err := r.ForEachInSegment(segmentFile, func(query string) error {
 				if line > segmentLine {
-					queries = append(queries, segmentFile)
+					queries = append(queries, query)
 				}
 				line++
 				return nil

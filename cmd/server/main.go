@@ -7,12 +7,14 @@ import (
 	"concurrency_hw/internal/database/network"
 	"context"
 	"errors"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -20,7 +22,16 @@ var (
 )
 
 func main() {
-	conf := config.Load()
+	var configPath string
+	flag.StringVar(&configPath, "config", "", "Path to configuration file")
+	flag.Parse()
+
+	var conf *config.AppConfig
+	if configPath != "" {
+		conf = config.LoadFromPath(configPath)
+	} else {
+		conf = config.Load()
+	}
 
 	logger := createLogger(conf.LoggingConfig)
 	defer func() {
@@ -47,12 +58,14 @@ func main() {
 	}
 
 	if conf.ReplicationConfig.ReplicaType == config.Master {
+		logger.Info("Creating master replicator server")
 		masterReplicatorServer, err := initializer.CreateMasterReplicatorServer(logger, conf, walInstance)
 		if err != nil {
 			logger.Fatal("Failed to create db replicator server", zap.Error(err))
 		}
 
-		runServer(ctx, logger, masterReplicatorServer)
+		logger.Info("Starting master replicator server")
+		go runServer(ctx, logger, masterReplicatorServer)
 	}
 
 	runServer(ctx, logger, dbServer)
@@ -60,11 +73,9 @@ func main() {
 }
 
 func runServer(ctx context.Context, logger *zap.Logger, tcpServer *network.TCPServer) {
-	go func() {
-		if err := tcpServer.Run(ctx); err != nil {
-			logger.Fatal("Failed to start server", zap.Error(err))
-		}
-	}()
+	if err := tcpServer.Run(ctx); err != nil {
+		logger.Fatal("Failed to start server", zap.Error(err))
+	}
 }
 
 func createLogger(conf *config.LoggingConfig) *zap.Logger {

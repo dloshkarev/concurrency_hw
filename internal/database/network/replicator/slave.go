@@ -3,6 +3,7 @@ package replicator
 import (
 	"concurrency_hw/internal/database/network"
 	"concurrency_hw/internal/database/storage/wal"
+	"strings"
 )
 
 type SlaveReplicator interface {
@@ -11,14 +12,16 @@ type SlaveReplicator interface {
 }
 
 type TCPSlaveReplicator struct {
-	tcpClient *network.TCPClient
-	wal       wal.Wal
+	tcpClient     *network.TCPClient
+	wal           wal.Wal
+	masterAddress string
 }
 
 func NewTCPSlaveReplicator(tcpClient *network.TCPClient, wal wal.Wal) *TCPSlaveReplicator {
 	return &TCPSlaveReplicator{
-		tcpClient: tcpClient,
-		wal:       wal,
+		tcpClient:     tcpClient,
+		wal:           wal,
+		masterAddress: tcpClient.GetAddress(),
 	}
 }
 
@@ -35,7 +38,19 @@ func (r *TCPSlaveReplicator) GetUpdates() ([]string, error) {
 
 	tcpResponse, err := r.tcpClient.Execute(request)
 	if err != nil {
-		return nil, err
+		// Если ошибка связана с закрытым соединением, пытаемся переподключиться
+		if r.isConnectionError(err) {
+			if reconnectErr := r.reconnect(); reconnectErr != nil {
+				return nil, reconnectErr
+			}
+			// Повторяем запрос после переподключения
+			tcpResponse, err = r.tcpClient.Execute(request)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	var response Response
@@ -46,11 +61,29 @@ func (r *TCPSlaveReplicator) GetUpdates() ([]string, error) {
 	return response.Queries, nil
 }
 
-func (r *TCPSlaveReplicator) Close() error {
-	err := r.tcpClient.Disconnect()
+func (r *TCPSlaveReplicator) isConnectionError(err error) bool {
+	errorMsg := err.Error()
+	return strings.Contains(errorMsg, "use of closed network connection") ||
+		strings.Contains(errorMsg, "connection refused") ||
+		strings.Contains(errorMsg, "EOF")
+}
+
+func (r *TCPSlaveReplicator) reconnect() error {
+	// Закрываем старое соединение
+	if r.tcpClient != nil {
+		_ = r.tcpClient.Disconnect()
+	}
+
+	// Создаем новое соединение
+	newClient, err := network.NewTCPClient(r.masterAddress)
 	if err != nil {
 		return err
 	}
 
+	r.tcpClient = newClient
 	return nil
+}
+
+func (r *TCPSlaveReplicator) Close() error {
+	return r.tcpClient.Disconnect()
 }

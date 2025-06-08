@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"concurrency_hw/internal/config"
 	"concurrency_hw/internal/database/network"
+	"concurrency_hw/internal/primitive"
 	"fmt"
 	"io"
 	"net"
@@ -44,11 +45,6 @@ func TestResponseConstants(t *testing.T) {
 		constant string
 		expected string
 	}{
-		{
-			name:     "NoConnectionsAvailable",
-			constant: network.NoConnectionsAvailable,
-			expected: "[error] no connections available",
-		},
 		{
 			name:     "CannotParseQuery",
 			constant: network.CannotParseQuery,
@@ -127,6 +123,7 @@ func TestNewTCPServer(t *testing.T) {
 	tests := []struct {
 		name           string
 		config         *config.NetworkConfig
+		semaphore      *primitive.Semaphore
 		requestHandler func([]byte) ([]byte, error)
 		wantError      bool
 	}{
@@ -138,6 +135,7 @@ func TestNewTCPServer(t *testing.T) {
 				MaxMessageSize: "4KB",
 				IdleTimeout:    5 * time.Minute,
 			},
+			semaphore:      primitive.NewSemaphore(10),
 			requestHandler: mockRequestHandler,
 			wantError:      false,
 		},
@@ -156,7 +154,7 @@ func TestNewTCPServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server, err := network.NewTCPServer(logger, tt.config, tt.requestHandler)
+			server, err := network.NewTCPServer(logger, tt.config, tt.semaphore, tt.requestHandler)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -200,11 +198,6 @@ func TestNewTCPClient(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestReadBufferSizeConstant(t *testing.T) {
-	// Проверяем, что константа ReadBufferSize имеет ожидаемое значение
-	assert.Equal(t, 1024, network.ReadBufferSize)
 }
 
 func TestMockRequestHandler(t *testing.T) {
@@ -373,7 +366,7 @@ func TestNetworkConfigValidation(t *testing.T) {
 				IdleTimeout:    5 * time.Minute,
 			}
 
-			server, err := network.NewTCPServer(logger, conf, mockRequestHandler)
+			server, err := network.NewTCPServer(logger, conf, primitive.NewSemaphore(10), mockRequestHandler)
 
 			if tt.wantError {
 				assert.Error(t, err)

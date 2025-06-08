@@ -2,13 +2,14 @@ package config
 
 import (
 	"fmt"
-	"github.com/ilyakaznacheev/cleanenv"
 	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 const (
@@ -61,6 +62,7 @@ type ReplicationConfig struct {
 func (c *AppConfig) ReplicatorNetworkConfig() *NetworkConfig {
 	replicatorNetConfig := *c.NetworkConfig
 	replicatorNetConfig.Address = c.ReplicationConfig.MasterAddress
+	replicatorNetConfig.IdleTimeout = 0
 	return &replicatorNetConfig
 }
 
@@ -84,6 +86,10 @@ func Load() *AppConfig {
 		log.Fatal("CONDB_CONFIG_PATH is not set")
 	}
 
+	return LoadFromPath(configPath)
+}
+
+func LoadFromPath(configPath string) *AppConfig {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("config file does not exist: %s", configPath)
 	}
